@@ -1,0 +1,165 @@
+import { getSessionUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { getLeaderboard } from "@/lib/scoring";
+import { formatARS, STAKE_PER_MATCH } from "@/lib/constants";
+import { MatchCard, type MatchView } from "../components/MatchCard";
+
+export const dynamic = "force-dynamic";
+
+function dayLabel(d: Date) {
+  return d.toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+export default async function PartidosPage() {
+  const user = (await getSessionUser())!;
+
+  const [matches, myPreds, board] = await Promise.all([
+    prisma.match.findMany({ orderBy: { kickoff: "asc" } }),
+    prisma.prediction.findMany({ where: { userId: user.id } }),
+    getLeaderboard(),
+  ]);
+
+  const pickByMatch = new Map(myPreds.map((p) => [p.matchId, p.pick]));
+  const myRow = board.rows.find((r) => r.userId === user.id);
+  const myRank = board.rows.findIndex((r) => r.userId === user.id) + 1;
+
+  const now = new Date();
+  const upcoming = matches.filter((m) => m.kickoff > now);
+  const past = matches.filter((m) => m.kickoff <= now);
+
+  // pronósticos pendientes (próximos sin elegir)
+  const pendingPicks = upcoming.filter((m) => !pickByMatch.has(m.id)).length;
+
+  // agrupar próximos por día
+  const groups = new Map<string, typeof upcoming>();
+  for (const m of upcoming) {
+    const key = m.kickoff.toISOString().slice(0, 10);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(m);
+  }
+
+  const toView = (m: (typeof matches)[number]): MatchView => ({
+    id: m.id,
+    stage: m.stage,
+    group: m.group,
+    homeTeam: m.homeTeam,
+    homeFlag: m.homeFlag,
+    awayTeam: m.awayTeam,
+    awayFlag: m.awayFlag,
+    kickoff: m.kickoff.toISOString(),
+    result: m.result as MatchView["result"],
+    userPick: (pickByMatch.get(m.id) as MatchView["userPick"]) ?? null,
+  });
+
+  return (
+    <div className="space-y-7">
+      {/* Resumen */}
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Stat label="Pozo acumulado" value={formatARS(board.pot)} accent />
+        <Stat label="Tus cajas 📦" value={String(myRow?.points ?? 0)} />
+        <Stat
+          label="Tu posición"
+          value={myRank > 0 ? `#${myRank}` : "—"}
+        />
+        <Stat label="Tu aporte" value={formatARS(myRow?.aporte ?? 0)} />
+      </section>
+
+      {pendingPicks > 0 && (
+        <div className="rounded-lg border border-amber/40 bg-amber/10 px-4 py-3 text-sm">
+          ⚠️ Tenés{" "}
+          <strong className="text-amber">
+            {pendingPicks} partido{pendingPicks > 1 ? "s" : ""}
+          </strong>{" "}
+          próximos sin pronosticar. Cada uno son {formatARS(STAKE_PER_MATCH)} al
+          pozo.
+        </div>
+      )}
+
+      {/* Próximos */}
+      <section>
+        <h2 className="text-lg font-black mb-3 flex items-center gap-2">
+          📦 Próximos envíos
+        </h2>
+        {upcoming.length === 0 ? (
+          <EmptyState>
+            No hay partidos próximos cargados. El admin tiene que cargar el
+            fixture en el panel.
+          </EmptyState>
+        ) : (
+          <div className="space-y-5">
+            {[...groups.entries()].map(([day, ms]) => (
+              <div key={day}>
+                <div className="text-xs uppercase tracking-wider text-muted mono mb-2 capitalize">
+                  {dayLabel(new Date(day + "T12:00:00"))}
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {ms.map((m) => (
+                    <MatchCard key={m.id} match={toView(m)} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Jugados */}
+      {past.length > 0 && (
+        <section>
+          <h2 className="text-lg font-black mb-3 flex items-center gap-2">
+            🚢 Despachados
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {past
+              .slice()
+              .reverse()
+              .map((m) => (
+                <MatchCard key={m.id} match={toView(m)} />
+              ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-3.5 ${
+        accent
+          ? "border-amber/40 bg-amber/10"
+          : "border-line bg-steel-850"
+      }`}
+    >
+      <div className="text-[11px] uppercase tracking-wide text-muted mono">
+        {label}
+      </div>
+      <div
+        className={`text-xl font-black mt-1 ${accent ? "text-amber" : ""}`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-dashed border-line bg-steel-850/50 p-8 text-center text-muted text-sm">
+      {children}
+    </div>
+  );
+}

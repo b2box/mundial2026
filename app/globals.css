@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+:root {
+  --steel-950: #070b14;
+  --steel-900: #0b1220;
+  --steel-850: #0f1828;
+  --steel-800: #142033;
+  --steel-700: #1d2c44;
+  --line: #25344f;
+  --amber: #f5a623;
+  --amber-bright: #ffc14d;
+  --rust: #d9572b;
+  --ink: #e8eef7;
+  --muted: #93a4bf;
+}
+
+@theme inline {
+  --color-steel-950: var(--steel-950);
+  --color-steel-900: var(--steel-900);
+  --color-steel-850: var(--steel-850);
+  --color-steel-800: var(--steel-800);
+  --color-steel-700: var(--steel-700);
+  --color-line: var(--line);
+  --color-amber: var(--amber);
+  --color-amber-bright: var(--amber-bright);
+  --color-rust: var(--rust);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  background: var(--steel-950);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Textura de contenedor corrugado */
+.corrugated {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0px,
+    rgba(255, 255, 255, 0.05) 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 14px
+  );
+}
+
+/* Cinta de seguridad / hazard */
+.hazard {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--amber) 0,
+    var(--amber) 14px,
+    #1a1a1a 14px,
+    #1a1a1a 28px
+  );
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Remaches del contenedor */
+.rivets::before,
+.rivets::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.25) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 2px 16px;
+}
+.rivets::before {
+  left: 6px;
+}
+.rivets::after {
+  right: 6px;
+}
+
+@keyframes stack-in {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.stack-in {
+  animation: stack-in 0.4s ease-out both;
+}

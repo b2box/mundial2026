@@ -1,0 +1,51 @@
+// B2BOX CARGO CUP - Prode del Mundial 2026
+// Para producción en Vercel: cambiar provider a "postgresql" y usar DATABASE_URL de Neon/Vercel Postgres.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  username     String       @unique
+  name         String
+  passwordHash String
+  color        String // color del contenedor (tema b2box)
+  isAdmin      Boolean      @default(false)
+  predictions  Prediction[]
+  createdAt    DateTime     @default(now())
+}
+
+model Match {
+  id          String       @id @default(cuid())
+  stage       String       @default("Fase de grupos") // Fase de grupos, Octavos, etc.
+  group       String? // A, B, C...
+  homeTeam    String
+  homeFlag    String       @default("🏳️")
+  awayTeam    String
+  awayFlag    String       @default("🏳️")
+  kickoff     DateTime
+  // Resultado: "HOME" gana local, "AWAY" gana visitante, "DRAW" empate, null = sin jugar
+  result      String?
+  predictions Prediction[]
+  createdAt   DateTime     @default(now())
+}
+
+model Prediction {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId   String
+  // El equipo que el usuario eligió: "HOME" o "AWAY"
+  pick      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, matchId])
+}
