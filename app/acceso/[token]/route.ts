@@ -16,7 +16,7 @@ export async function GET(
     if (!user) {
       return NextResponse.redirect(new URL("/login?error=1", request.url));
     }
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/?bienvenida=1", request.url));
   } catch {
     // Base de datos no configurada o caída: mensaje claro en vez de un 500.
     return NextResponse.redirect(new URL("/login?error=config", request.url));

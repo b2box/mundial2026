@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getLeaderboard } from "@/lib/scoring";
 import { formatARS, STAKE_PER_MATCH } from "@/lib/constants";
 import { MatchCard, type MatchView } from "../components/MatchCard";
+import { WelcomeSplash } from "../components/WelcomeSplash";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +15,13 @@ function dayLabel(d: Date) {
   });
 }
 
-export default async function PartidosPage() {
+export default async function PartidosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ bienvenida?: string }>;
+}) {
   const user = await requireUser();
+  const { bienvenida } = await searchParams;
 
   const [matches, myPreds, board] = await Promise.all([
     prisma.match.findMany({ orderBy: { kickoff: "asc" } }),
@@ -57,6 +63,8 @@ export default async function PartidosPage() {
 
   return (
     <div className="space-y-7">
+      {bienvenida && <WelcomeSplash name={user.name} color={user.color} />}
+
       {/* Resumen */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat label="Pozo acumulado" value={formatARS(board.pot)} accent />
