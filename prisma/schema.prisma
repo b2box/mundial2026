@@ -38,6 +38,12 @@ model Match {
   createdAt   DateTime     @default(now())
 }
 
+// Clave-valor para estado interno (ej: última sincronización de resultados)
+model Meta {
+  key   String @id
+  value String
+}
+
 model Prediction {
   id        String   @id @default(cuid())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

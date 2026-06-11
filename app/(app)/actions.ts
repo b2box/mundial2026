@@ -41,5 +41,6 @@ export async function savePrediction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/mi-cuenta");
+  revalidatePath("/tabla");
   return { ok: true };
 }

@@ -151,10 +151,10 @@ export function WelcomeSplash({
                 <li className="flex gap-2.5">
                   <span>💰</span>
                   <span>
-                    Cada partido aportás{" "}
-                    <strong className="text-amber">{fmtARS(stake)}</strong> al
-                    pozo. Es <strong>obligatorio en todos</strong>: son{" "}
-                    {totalMatches} partidos entre {memberCount} cracks.
+                    Cada pronóstico suma{" "}
+                    <strong className="text-amber">{fmtARS(stake)}</strong>{" "}
+                    tuyos al pozo, automáticamente. La meta: jugar los{" "}
+                    {totalMatches} partidos entre los {memberCount}.
                   </span>
                 </li>
                 <li className="flex gap-2.5">
@@ -196,6 +196,9 @@ export function WelcomeSplash({
               >
                 ¡A jugar! ⚽
               </button>
+              <p className="mt-3 text-center text-xs text-muted">
+                Tenés todo explicado en la pestaña <strong>📖 Guía</strong>
+              </p>
             </div>
             <div className="corrugated h-3 bg-steel-800" />
           </div>

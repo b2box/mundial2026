@@ -51,8 +51,9 @@ export default async function AdminPage() {
           ⚙️ Panel de carga
         </h1>
         <p className="text-sm text-muted">
-          Cargá el fixture y, cuando termine cada partido, marcá el resultado.
-          La tabla se actualiza sola.
+          Los resultados se cargan <strong>solos</strong> un rato después de
+          cada partido (sincronización automática). Los botones de resultado
+          quedan como respaldo por si la fuente falla.
         </p>
       </div>
 

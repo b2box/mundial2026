@@ -12,7 +12,7 @@ export type LeaderRow = {
   draws: number;
   losses: number;
   missed: number; // partidos jugados que NO pronosticó
-  aporte: number; // ARS que debe haber puesto al pozo
+  aporte: number; // ARS aportados al pozo (automático: $ por cada pronóstico)
 };
 
 export function pointsForPick(
@@ -85,8 +85,8 @@ export async function getLeaderboard(): Promise<{
       draws,
       losses,
       missed,
-      // Cada miembro debe poner por cada partido que ya arrancó
-      aporte: startedMatches * STAKE_PER_MATCH,
+      // Aporte automático: cada pronóstico hecho suma al pozo
+      aporte: userPreds.length * STAKE_PER_MATCH,
     };
   });
 
@@ -96,8 +96,8 @@ export async function getLeaderboard(): Promise<{
     return a.name.localeCompare(b.name);
   });
 
-  // Pozo: todos los miembros aportan por cada partido que ya arrancó
-  const pot = startedMatches * users.length * STAKE_PER_MATCH;
+  // Pozo captado: $ por cada pronóstico hecho (automático al elegir)
+  const pot = predictions.length * STAKE_PER_MATCH;
   // Pozo proyectado: los 104 partidos del Mundial × miembros × aporte
   const projectedPot = TOTAL_MATCHES * users.length * STAKE_PER_MATCH;
 

@@ -1,13 +1,17 @@
 import { requireUser } from "@/lib/auth";
 import { getLeaderboard } from "@/lib/scoring";
 import { formatARS, PRIZE_SPLIT } from "@/lib/constants";
+import { syncResults } from "@/lib/results-sync";
 
 export const dynamic = "force-dynamic";
 
 export default async function TablaPage() {
   const me = await requireUser();
+  await syncResults();
   const { rows, pot, finishedMatches } = await getLeaderboard();
 
+  // sin partidos terminados no hay ranking: la torre se muestra neutral
+  const hasRanking = finishedMatches > 0;
   const maxPoints = Math.max(1, ...rows.map((r) => r.points));
   const podium = PRIZE_SPLIT.map((pct) => Math.round(pot * pct));
 
@@ -35,18 +39,24 @@ export default async function TablaPage() {
 
       {/* Torre visual */}
       <section className="rounded-xl border border-line bg-steel-850 p-4">
+        {!hasRanking && (
+          <div className="mb-3 rounded-lg border border-line bg-steel-900 px-3 py-2.5 text-sm text-muted">
+            ⏳ Todavía no terminó ningún partido: están todos en la línea de
+            largada. El ranking aparece con el primer resultado.
+          </div>
+        )}
         <div className="space-y-1.5">
           {rows.map((r, i) => {
-            const width = 30 + (r.points / maxPoints) * 70;
+            const width = hasRanking ? 30 + (r.points / maxPoints) * 70 : 55;
             const isMe = r.userId === me.id;
             return (
               <div key={r.userId} className="flex items-center gap-3">
                 <div className="w-6 text-right mono text-sm text-muted">
-                  {i + 1}
+                  {hasRanking ? i + 1 : "–"}
                 </div>
                 <div
                   className={`relative h-11 rounded-md corrugated flex items-center px-3 min-w-[120px] grow-x ${
-                    i === 0 ? "shimmer" : ""
+                    hasRanking && i === 0 ? "shimmer" : ""
                   }`}
                   style={{
                     width: `${width}%`,
@@ -56,11 +66,12 @@ export default async function TablaPage() {
                 >
                   <span className="fade-in-late flex items-center min-w-0 w-full">
                     <span className="font-bold text-steel-950 drop-shadow-sm truncate">
-                      {i === 0 ? (
-                        <span className="sparkle">{medal(i)}</span>
-                      ) : (
-                        medal(i)
-                      )}{" "}
+                      {hasRanking &&
+                        (i === 0 ? (
+                          <span className="sparkle">{medal(i)}</span>
+                        ) : (
+                          medal(i)
+                        ))}{" "}
                       {r.name}
                       {isMe && " (vos)"}
                     </span>
@@ -104,7 +115,9 @@ export default async function TablaPage() {
                       isMe ? "bg-amber/5" : ""
                     }`}
                   >
-                    <td className="px-3 py-2.5 mono text-muted">{i + 1}</td>
+                    <td className="px-3 py-2.5 mono text-muted">
+                      {hasRanking ? i + 1 : "–"}
+                    </td>
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center gap-2">
                         <span
@@ -162,7 +175,8 @@ export default async function TablaPage() {
             >
               <div className="text-2xl">{medal(i)}</div>
               <div className="text-[11px] uppercase tracking-wide text-muted mono mt-1">
-                {Math.round(PRIZE_SPLIT[i] * 100)}% · {rows[i]?.name ?? "—"}
+                {Math.round(PRIZE_SPLIT[i] * 100)}% ·{" "}
+                {hasRanking ? (rows[i]?.name ?? "—") : "por definir"}
               </div>
               <div className="font-black text-amber mt-0.5">
                 {formatARS(podium[i])}

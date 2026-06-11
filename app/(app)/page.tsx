@@ -11,6 +11,7 @@ import {
 import { TBD } from "@/lib/teams";
 import { MatchCard, type MatchView } from "../components/MatchCard";
 import { WelcomeSplash } from "../components/WelcomeSplash";
+import { syncResults } from "@/lib/results-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -41,32 +42,56 @@ export default async function PartidosPage({
   const user = await requireUser();
   const { bienvenida } = await searchParams;
 
-  const [matches, myPreds, board] = await Promise.all([
+  // resultados automáticos (throttled, no bloquea si la API falla)
+  await syncResults();
+
+  const [matches, myPreds, board, lockedPreds] = await Promise.all([
     prisma.match.findMany({ orderBy: { kickoff: "asc" } }),
     prisma.prediction.findMany({ where: { userId: user.id } }),
     getLeaderboard(),
+    // pronósticos de TODOS en partidos ya cerrados (se revelan al arrancar)
+    prisma.prediction.findMany({
+      where: { match: { kickoff: { lte: new Date() } } },
+      include: { user: { select: { name: true, color: true } } },
+    }),
   ]);
 
   const pickByMatch = new Map(myPreds.map((p) => [p.matchId, p.pick]));
   const myRow = board.rows.find((r) => r.userId === user.id);
   const myRank = board.rows.findIndex((r) => r.userId === user.id) + 1;
 
+  const allPicksByMatch = new Map<
+    string,
+    { name: string; color: string; pick: string }[]
+  >();
+  for (const p of lockedPreds) {
+    if (!allPicksByMatch.has(p.matchId)) allPicksByMatch.set(p.matchId, []);
+    allPicksByMatch.get(p.matchId)!.push({
+      name: p.user.name,
+      color: p.user.color,
+      pick: p.pick,
+    });
+  }
+
   const now = new Date();
   const upcoming = matches.filter((m) => m.kickoff > now);
   const past = matches.filter((m) => m.kickoff <= now);
 
-  // pronósticos pendientes: solo partidos con ventana abierta (48 hs antes)
-  const pendingPicks = upcoming.filter(
+  // partidos con ventana abierta (48 hs antes) donde todavía no elegiste
+  const toPlay = upcoming.filter(
     (m) =>
       m.homeTeam !== TBD &&
       m.awayTeam !== TBD &&
       m.kickoff.getTime() - now.getTime() <= PICK_WINDOW_HOURS * 3600 * 1000 &&
       !pickByMatch.has(m.id)
-  ).length;
+  );
+  const toPlayIds = new Set(toPlay.map((m) => m.id));
+  const pendingPicks = toPlay.length;
 
-  // agrupar próximos por día (en hora argentina)
+  // agrupar el resto de los próximos por día (en hora argentina)
   const groups = new Map<string, typeof upcoming>();
   for (const m of upcoming) {
+    if (toPlayIds.has(m.id)) continue;
     const key = argDateKey(m.kickoff);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(m);
@@ -126,7 +151,7 @@ export default async function PartidosPage({
             </span>
             <span>
               {Math.round((board.pot / board.projectedPot) * 100)}% ·{" "}
-              {board.startedMatches}/{TOTAL_MATCHES} partidos
+              {Math.round(board.pot / STAKE_PER_MATCH)} pronósticos
             </span>
           </div>
           <div className="h-3.5 rounded-full bg-steel-900 border border-line overflow-hidden">
@@ -141,8 +166,8 @@ export default async function PartidosPage({
             />
           </div>
           <div className="text-[10px] text-muted mono mt-1">
-            Se suman {formatARS(STAKE_PER_MATCH * board.memberCount)} con cada
-            partido que arranca
+            Cada pronóstico suma {formatARS(STAKE_PER_MATCH)} al pozo,
+            automáticamente
           </div>
         </div>
       </section>
@@ -153,27 +178,46 @@ export default async function PartidosPage({
         <Stat label="Tus cajas 📦" value={String(myRow?.points ?? 0)} />
         <Stat
           label="Tu posición"
-          value={myRank > 0 ? `#${myRank}` : "—"}
+          value={
+            board.finishedMatches > 0 && myRank > 0 ? `#${myRank}` : "—"
+          }
         />
         <Stat label="Tu aporte" value={formatARS(myRow?.aporte ?? 0)} />
       </section>
 
-      {pendingPicks > 0 && (
-        <div className="rounded-lg border border-amber/40 bg-amber/10 px-4 py-3 text-sm">
-          ⚠️ Tenés{" "}
-          <strong className="text-amber">
-            {pendingPicks} partido{pendingPicks > 1 ? "s" : ""}
-          </strong>{" "}
-          próximos sin pronosticar. Cada uno son {formatARS(STAKE_PER_MATCH)} al
-          pozo.
-        </div>
+      {/* Te toca elegir: lo más importante, arriba de todo */}
+      {pendingPicks > 0 ? (
+        <section className="rounded-xl border-2 border-amber bg-amber/10 p-4">
+          <h2 className="text-lg font-black flex items-center gap-2">
+            ⚡ Te toca elegir ({pendingPicks})
+          </h2>
+          <p className="text-sm text-muted mt-0.5 mb-3">
+            Tocá el equipo que creés que gana en cada partido. Tenés tiempo
+            hasta que arranquen.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {toPlay.map((m, idx) => (
+              <MatchCard key={m.id} match={toView(m)} index={idx} />
+            ))}
+          </div>
+        </section>
+      ) : (
+        upcoming.length > 0 && (
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm">
+            ✅ Estás al día: ya elegiste en todos los partidos habilitados.
+          </div>
+        )
       )}
 
       {/* Próximos */}
       <section>
-        <h2 className="text-lg font-black mb-3 flex items-center gap-2">
-          📦 Próximos envíos
+        <h2 className="text-lg font-black mb-1 flex items-center gap-2">
+          📅 Lo que viene
         </h2>
+        <p className="text-sm text-muted mb-3">
+          Los partidos se habilitan {PICK_WINDOW_HOURS} hs antes (los borrosos
+          todavía no se juegan).
+        </p>
         {upcoming.length === 0 ? (
           <EmptyState>
             No hay partidos próximos cargados. El admin tiene que cargar el
@@ -199,19 +243,25 @@ export default async function PartidosPage({
 
       {/* Jugados */}
       {past.length > 0 && (
-        <section>
-          <h2 className="text-lg font-black mb-3 flex items-center gap-2">
-            🚢 Despachados
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-3">
+        <details className="group">
+          <summary className="cursor-pointer select-none text-lg font-black flex items-center gap-2 list-none">
+            <span className="transition-transform group-open:rotate-90">▶</span>
+            🚢 Partidos jugados ({past.length})
+          </summary>
+          <div className="grid sm:grid-cols-2 gap-3 mt-3">
             {past
               .slice()
               .reverse()
               .map((m, idx) => (
-                <MatchCard key={m.id} match={toView(m)} index={idx} />
+                <MatchCard
+                  key={m.id}
+                  match={toView(m)}
+                  index={idx}
+                  allPicks={allPicksByMatch.get(m.id)}
+                />
               ))}
           </div>
-        </section>
+        </details>
       )}
     </div>
   );

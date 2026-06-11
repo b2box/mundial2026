@@ -57,9 +57,12 @@ function pointsFor(pick: "HOME" | "AWAY" | null, result: string | null) {
 export function MatchCard({
   match,
   index = 0,
+  allPicks,
 }: {
   match: MatchView;
   index?: number;
+  // pronósticos de todos (se muestran cuando el partido ya cerró)
+  allPicks?: { name: string; color: string; pick: string }[];
 }) {
   const [pick, setPick] = useState(match.userPick);
   const [pending, startTransition] = useTransition();
@@ -193,12 +196,38 @@ export function MatchCard({
               )}
             </span>
           ) : (
-            <span className="text-muted">
-              {pick ? "Podés cambiar tu caja hasta que arranque" : "Elegí tu caja 👆"}
+            <span className={pick ? "text-muted" : "text-amber font-semibold"}>
+              {pick
+                ? "✓ Listo. Podés cambiar hasta que arranque"
+                : "👆 Tocá al equipo que creés que gana"}
             </span>
           )}
           {pending && <span className="text-muted mono">guardando…</span>}
         </div>
+
+        {/* Cajas de todos: se revelan cuando el partido cierra */}
+        {locked && !tbd && allPicks && allPicks.length > 0 && (
+          <div className="mt-2.5 pt-2.5 border-t border-line/40">
+            <div className="text-[10px] uppercase mono text-muted mb-1.5">
+              📦 Así jugaron
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {allPicks.map((p) => (
+                <span
+                  key={p.name}
+                  className="inline-flex items-center gap-1.5 text-[11px] bg-steel-900 border border-line rounded-full px-2 py-1"
+                >
+                  <span
+                    className="w-2 h-2 rounded-sm border border-white/20"
+                    style={{ background: p.color }}
+                  />
+                  {p.name}{" "}
+                  {p.pick === "HOME" ? match.homeFlag : match.awayFlag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

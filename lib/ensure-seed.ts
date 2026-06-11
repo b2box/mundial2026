@@ -47,6 +47,11 @@ async function ensureSchema() {
       CONSTRAINT "Prediction_pkey" PRIMARY KEY ("id")
     )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "Prediction_userId_matchId_key" ON "Prediction"("userId","matchId")`,
+    `CREATE TABLE IF NOT EXISTS "Meta" (
+      "key" TEXT NOT NULL,
+      "value" TEXT NOT NULL,
+      CONSTRAINT "Meta_pkey" PRIMARY KEY ("key")
+    )`,
   ];
   for (const sql of statements) {
     try {
