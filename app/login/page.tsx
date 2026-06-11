@@ -1,11 +1,17 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { LoginForm } from "./LoginForm";
 import { Brand } from "../components/Logo";
 
-export default async function LoginPage() {
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const user = await getSessionUser();
   if (user) redirect("/");
+  const { error } = await searchParams;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
@@ -16,16 +22,28 @@ export default async function LoginPage() {
 
         <div className="relative rounded-xl border border-line bg-steel-850 overflow-hidden shadow-2xl">
           <div className="hazard h-2" />
-          <div className="p-7">
-            <div className="mono text-[11px] uppercase tracking-[0.25em] text-amber mb-1">
-              Terminal de acceso
-            </div>
-            <h1 className="text-xl font-black mb-1">Identificá tu contenedor</h1>
-            <p className="text-sm text-muted mb-6">
-              Ingresá con tu usuario y contraseña para cargar tus pronósticos.
+          <div className="p-7 text-center">
+            <div className="text-5xl mb-3">📦🔗</div>
+            <h1 className="text-xl font-black mb-2">
+              Entrá con tu link personal
+            </h1>
+            <p className="text-sm text-muted">
+              No hay usuario ni contraseña. Cada miembro tiene un{" "}
+              <span className="text-amber">link único</span> de acceso. Abrilo y
+              ya estás adentro — guardalo en favoritos.
             </p>
 
-            <LoginForm />
+            {error && (
+              <div className="mt-5 rounded-lg border border-rust/40 bg-rust/10 px-3 py-2 text-sm text-rust">
+                Ese link no es válido o expiró. Pedile al admin que te reenvíe el
+                tuyo.
+              </div>
+            )}
+
+            <div className="mt-6 rounded-lg border border-line bg-steel-900 px-4 py-3 text-sm text-muted">
+              ¿No tenés tu link?{" "}
+              <span className="text-ink">Pedíselo a Gabriel.</span>
+            </div>
           </div>
           <div className="corrugated h-3 bg-steel-800" />
         </div>

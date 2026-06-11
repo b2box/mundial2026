@@ -1,12 +1,15 @@
-import { getSessionUser } from "@/lib/auth";
+import { headers } from "next/headers";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLeaderboard, pointsForPick } from "@/lib/scoring";
 import { formatARS } from "@/lib/constants";
+import { CopyLink } from "../../components/CopyLink";
+import { baseUrlFromHeaders } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
 export default async function MiCuentaPage() {
-  const user = (await getSessionUser())!;
+  const user = await requireUser();
 
   const [preds, board] = await Promise.all([
     prisma.prediction.findMany({
@@ -19,6 +22,9 @@ export default async function MiCuentaPage() {
 
   const myRow = board.rows.find((r) => r.userId === user.id);
   const rank = board.rows.findIndex((r) => r.userId === user.id) + 1;
+
+  const base = baseUrlFromHeaders(await headers());
+  const myLink = `${base}/acceso/${user.token}`;
 
   return (
     <div className="space-y-7">
@@ -105,6 +111,15 @@ export default async function MiCuentaPage() {
             })}
           </div>
         )}
+      </section>
+
+      <section className="rounded-xl border border-line bg-steel-850 p-4">
+        <h2 className="text-lg font-black mb-1">🔗 Mi link de acceso</h2>
+        <p className="text-sm text-muted mb-4">
+          Este es tu link personal: guardalo en favoritos y entrás directo, sin
+          contraseña. No lo compartas — es tu acceso.
+        </p>
+        <CopyLink url={myLink} />
       </section>
     </div>
   );

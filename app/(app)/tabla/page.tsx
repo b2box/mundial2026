@@ -1,11 +1,11 @@
-import { getSessionUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { getLeaderboard } from "@/lib/scoring";
 import { formatARS, PRIZE_SPLIT } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 export default async function TablaPage() {
-  const me = (await getSessionUser())!;
+  const me = await requireUser();
   const { rows, pot, finishedMatches } = await getLeaderboard();
 
   const maxPoints = Math.max(1, ...rows.map((r) => r.points));

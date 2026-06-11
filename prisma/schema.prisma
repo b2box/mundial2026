@@ -1,24 +1,26 @@
 // B2BOX CARGO CUP - Prode del Mundial 2026
-// Para producción en Vercel: cambiar provider a "postgresql" y usar DATABASE_URL de Neon/Vercel Postgres.
+// Producción: Postgres (Neon / Vercel Postgres). DATABASE_URL en variables de entorno.
+// Para correr 100% offline con SQLite, cambiar provider a "sqlite" y DATABASE_URL a "file:./dev.db".
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String       @id @default(cuid())
-  username     String       @unique
-  name         String
-  passwordHash String
-  color        String // color del contenedor (tema b2box)
-  isAdmin      Boolean      @default(false)
-  predictions  Prediction[]
-  createdAt    DateTime     @default(now())
+  id          String       @id @default(cuid())
+  username    String       @unique
+  name        String
+  token       String       @unique // link único de acceso (sin contraseña)
+  color       String // color del contenedor (tema b2box)
+  isAdmin     Boolean      @default(false)
+  predictions Prediction[]
+  createdAt   DateTime     @default(now())
 }
 
 model Match {

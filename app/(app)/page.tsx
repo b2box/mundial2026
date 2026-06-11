@@ -1,4 +1,4 @@
-import { getSessionUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLeaderboard } from "@/lib/scoring";
 import { formatARS, STAKE_PER_MATCH } from "@/lib/constants";
@@ -15,7 +15,7 @@ function dayLabel(d: Date) {
 }
 
 export default async function PartidosPage() {
-  const user = (await getSessionUser())!;
+  const user = await requireUser();
 
   const [matches, myPreds, board] = await Promise.all([
     prisma.match.findMany({ orderBy: { kickoff: "asc" } }),

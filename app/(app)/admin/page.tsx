@@ -1,9 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
 import { AddMatchForm } from "./AddMatchForm";
-import { setResult, deleteMatch } from "./actions";
+import { BulkLoadForm } from "./BulkLoadForm";
+import { setResult, deleteMatch, regenerateToken } from "./actions";
 import { DeleteButton } from "./DeleteButton";
+import { CopyLink } from "../../components/CopyLink";
+import { baseUrlFromHeaders } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +16,15 @@ export default async function AdminPage() {
   if (!user) redirect("/login");
   if (!user.isAdmin) redirect("/");
 
-  const matches = await prisma.match.findMany({
-    orderBy: { kickoff: "asc" },
-    include: { _count: { select: { predictions: true } } },
-  });
+  const [matches, members] = await Promise.all([
+    prisma.match.findMany({
+      orderBy: { kickoff: "asc" },
+      include: { _count: { select: { predictions: true } } },
+    }),
+    prisma.user.findMany({ orderBy: { name: "asc" } }),
+  ]);
+
+  const base = baseUrlFromHeaders(await headers());
 
   return (
     <div className="space-y-7">
@@ -32,6 +41,11 @@ export default async function AdminPage() {
       <section className="rounded-xl border border-line bg-steel-850 p-4">
         <h2 className="font-black mb-3">＋ Nuevo partido</h2>
         <AddMatchForm />
+      </section>
+
+      <section className="rounded-xl border border-line bg-steel-850 p-4">
+        <h2 className="font-black mb-3">📋 Carga masiva del fixture</h2>
+        <BulkLoadForm />
       </section>
 
       <section>
@@ -107,6 +121,47 @@ export default async function AdminPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section>
+        <h2 className="font-black mb-1">
+          🔗 Links de acceso ({members.length})
+        </h2>
+        <p className="text-sm text-muted mb-3">
+          Copiá el link de cada uno y mandáselo (WhatsApp, mail…). Con ese link
+          entran directo, sin contraseña. Si se filtra, regenerá el link y el
+          anterior deja de funcionar.
+        </p>
+        <div className="space-y-2.5">
+          {members.map((m) => (
+            <div
+              key={m.id}
+              className="rounded-xl border border-line bg-steel-850 p-3"
+            >
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className="inline-block w-3 h-3 rounded-sm border border-white/20"
+                    style={{ background: m.color }}
+                  />
+                  <span className="font-medium">{m.name}</span>
+                  {m.isAdmin && (
+                    <span className="text-[10px] uppercase mono text-amber border border-amber/40 rounded px-1.5 py-0.5">
+                      admin
+                    </span>
+                  )}
+                </span>
+                <form action={regenerateToken}>
+                  <input type="hidden" name="userId" value={m.id} />
+                  <button className="text-xs text-muted hover:text-rust border border-line hover:border-rust/50 rounded-md px-2.5 py-1.5 transition-colors">
+                    Regenerar
+                  </button>
+                </form>
+              </div>
+              <CopyLink url={`${base}/acceso/${m.token}`} compact />
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

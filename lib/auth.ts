@@ -1,7 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
-import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
 const COOKIE_NAME = "b2box_session";
@@ -15,13 +15,14 @@ export type SessionUser = {
   name: string;
   color: string;
   isAdmin: boolean;
+  token: string;
 };
 
 export async function createSession(userId: string) {
   const token = await new SignJWT({ uid: userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime("180d")
     .sign(secret);
 
   const cookieStore = await cookies();
@@ -30,7 +31,7 @@ export async function createSession(userId: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 60 * 60 * 24 * 180,
   });
 }
 
@@ -54,22 +55,25 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       name: user.name,
       color: user.color,
       isAdmin: user.isAdmin,
+      token: user.token,
     };
   } catch {
     return null;
   }
 }
 
-export async function verifyCredentials(username: string, password: string) {
-  const user = await prisma.user.findUnique({
-    where: { username: username.trim().toLowerCase() },
-  });
-  if (!user) return null;
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return null;
+// Devuelve el usuario de la sesión o redirige a /login si no hay sesión.
+export async function requireUser(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
   return user;
 }
 
-export async function hashPassword(password: string) {
-  return bcrypt.hash(password, 10);
+// Inicia sesión a partir del token del link único. Devuelve el usuario o null.
+export async function loginWithToken(accessToken: string) {
+  if (!accessToken) return null;
+  const user = await prisma.user.findUnique({ where: { token: accessToken } });
+  if (!user) return null;
+  await createSession(user.id);
+  return user;
 }
