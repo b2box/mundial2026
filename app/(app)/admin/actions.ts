@@ -67,6 +67,7 @@ export async function deleteMatch(formData: FormData) {
   await requireAdmin();
   const matchId = String(formData.get("matchId") ?? "");
   if (!matchId) return;
+  await prisma.prediction.deleteMany({ where: { matchId } });
   await prisma.match.delete({ where: { id: matchId } });
   revalidatePath("/admin");
   revalidatePath("/");

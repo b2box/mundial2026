@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { ensureSeeded } from "@/lib/ensure-seed";
 import { Brand } from "../components/Logo";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  await ensureSeeded();
   const user = await getSessionUser();
   if (user) redirect("/");
   const { error } = await searchParams;
