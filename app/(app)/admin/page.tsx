@@ -8,6 +8,7 @@ import { LoadFixtureButton } from "./LoadFixtureButton";
 import { EditMatchForm } from "./EditMatchForm";
 import { setResult, deleteMatch, regenerateToken } from "./actions";
 import { DeleteButton } from "./DeleteButton";
+import { ClearPicksButton } from "./ClearPicksButton";
 import { CopyLink } from "../../components/CopyLink";
 import { baseUrlFromHeaders } from "@/lib/url";
 import { TZ } from "@/lib/constants";
@@ -39,7 +40,10 @@ export default async function AdminPage() {
       orderBy: { kickoff: "asc" },
       include: { _count: { select: { predictions: true } } },
     }),
-    prisma.user.findMany({ orderBy: { name: "asc" } }),
+    prisma.user.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { predictions: true } } },
+    }),
   ]);
 
   const base = baseUrlFromHeaders(await headers());
@@ -194,13 +198,19 @@ export default async function AdminPage() {
                       admin
                     </span>
                   )}
+                  <span className="text-[11px] text-muted mono">
+                    {m._count.predictions} pron.
+                  </span>
                 </span>
-                <form action={regenerateToken}>
-                  <input type="hidden" name="userId" value={m.id} />
-                  <button className="text-xs text-muted hover:text-rust border border-line hover:border-rust/50 rounded-md px-2.5 py-1.5 transition-colors">
-                    Regenerar
-                  </button>
-                </form>
+                <div className="flex items-center gap-2">
+                  <ClearPicksButton userId={m.id} name={m.name} />
+                  <form action={regenerateToken}>
+                    <input type="hidden" name="userId" value={m.id} />
+                    <button className="text-xs text-muted hover:text-rust border border-line hover:border-rust/50 rounded-md px-2.5 py-1.5 transition-colors">
+                      Regenerar
+                    </button>
+                  </form>
+                </div>
               </div>
               <CopyLink url={`${base}/acceso/${m.token}`} compact />
             </div>

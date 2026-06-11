@@ -179,6 +179,18 @@ export async function regenerateToken(formData: FormData) {
   revalidatePath("/admin");
 }
 
+// Borra TODOS los pronósticos de un miembro (ej: limpiar datos de prueba).
+export async function clearMemberPredictions(
+  formData: FormData
+): Promise<{ ok?: number; error?: string }> {
+  await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Falta el miembro." };
+  const r = await prisma.prediction.deleteMany({ where: { userId } });
+  revalidateAll();
+  return { ok: r.count };
+}
+
 // Carga masiva de partidos. Formato por línea:
 //   Local | Visitante | 2026-06-11 20:00 | A | Fase de grupos
 // (el grupo y la instancia son opcionales)
