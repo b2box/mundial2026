@@ -138,7 +138,14 @@ export function MatchCard({
       </div>
 
       <div className="p-3.5">
-        <div className="flex items-stretch gap-2">
+        <div
+          className={`flex items-stretch gap-2 transition-all ${
+            tbd || notYetOpen
+              ? "opacity-40 blur-[1.5px] grayscale select-none pointer-events-none"
+              : ""
+          }`}
+          aria-disabled={tbd || notYetOpen}
+        >
           <TeamButton side="HOME" />
           <div className="flex flex-col items-center justify-center px-1 text-muted">
             <span className="text-xs mono">VS</span>

@@ -98,7 +98,7 @@ export default async function PartidosPage({
         />
       )}
 
-      {/* Pozo proyectado */}
+      {/* Pozo proyectado + barra de llenado */}
       <section className="relative rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -114,6 +114,35 @@ export default async function PartidosPage({
             {formatARS(STAKE_PER_MATCH)}
             <br />
             Podio: 60% / 30% / 10%
+          </div>
+        </div>
+
+        {/* El contenedor se va llenando partido a partido */}
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-xs mono text-muted mb-1.5">
+            <span>
+              📦 Acumulado:{" "}
+              <strong className="text-amber">{formatARS(board.pot)}</strong>
+            </span>
+            <span>
+              {Math.round((board.pot / board.projectedPot) * 100)}% ·{" "}
+              {board.startedMatches}/{TOTAL_MATCHES} partidos
+            </span>
+          </div>
+          <div className="h-3.5 rounded-full bg-steel-900 border border-line overflow-hidden">
+            <div
+              className="h-full hazard grow-x"
+              style={{
+                width: `${Math.max(
+                  board.pot > 0 ? 2 : 0,
+                  (board.pot / board.projectedPot) * 100
+                )}%`,
+              }}
+            />
+          </div>
+          <div className="text-[10px] text-muted mono mt-1">
+            Se suman {formatARS(STAKE_PER_MATCH * board.memberCount)} con cada
+            partido que arranca
           </div>
         </div>
       </section>
