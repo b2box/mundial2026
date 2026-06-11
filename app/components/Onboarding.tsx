@@ -42,6 +42,7 @@ export function Onboarding({
   function finishTour() {
     localStorage.setItem(TOUR_KEY, "1");
     setTourActive(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     router.replace("/", { scroll: false });
   }
 
