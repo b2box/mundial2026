@@ -32,6 +32,21 @@ function fmtTime(iso: string) {
 }
 
 const TBD = "Por confirmar";
+const PICK_WINDOW_HOURS = 48;
+
+function fmtOpens(kickoffIso: string) {
+  const opens = new Date(
+    new Date(kickoffIso).getTime() - PICK_WINDOW_HOURS * 3600 * 1000
+  );
+  return opens.toLocaleString("es-AR", {
+    timeZone: TZ,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function pointsFor(pick: "HOME" | "AWAY" | null, result: string | null) {
   if (!pick || !result) return null;
@@ -51,8 +66,12 @@ export function MatchCard({
   const [error, setError] = useState<string | null>(null);
 
   const tbd = match.homeTeam === TBD || match.awayTeam === TBD;
-  const locked =
-    tbd || new Date(match.kickoff) <= new Date() || !!match.result;
+  const kickoffMs = new Date(match.kickoff).getTime();
+  const nowMs = Date.now();
+  // la ventana de pronóstico abre 48 hs antes del partido
+  const notYetOpen =
+    !tbd && !match.result && kickoffMs - nowMs > PICK_WINDOW_HOURS * 3600 * 1000;
+  const locked = tbd || notYetOpen || kickoffMs <= nowMs || !!match.result;
   const pts = pointsFor(pick, match.result);
 
   function choose(side: "HOME" | "AWAY") {
@@ -133,6 +152,10 @@ export function MatchCard({
           ) : tbd ? (
             <span className="text-muted">
               🔀 Cruce por definir — se habilita cuando estén los equipos
+            </span>
+          ) : notYetOpen ? (
+            <span className="text-muted">
+              ⏳ Se habilita el {fmtOpens(match.kickoff)} hs (48 hs antes)
             </span>
           ) : locked ? (
             <span className="text-muted">

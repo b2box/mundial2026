@@ -1,7 +1,14 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLeaderboard } from "@/lib/scoring";
-import { formatARS, STAKE_PER_MATCH, TOTAL_MATCHES, TZ } from "@/lib/constants";
+import {
+  formatARS,
+  STAKE_PER_MATCH,
+  TOTAL_MATCHES,
+  TZ,
+  PICK_WINDOW_HOURS,
+} from "@/lib/constants";
+import { TBD } from "@/lib/teams";
 import { MatchCard, type MatchView } from "../components/MatchCard";
 import { WelcomeSplash } from "../components/WelcomeSplash";
 
@@ -48,8 +55,14 @@ export default async function PartidosPage({
   const upcoming = matches.filter((m) => m.kickoff > now);
   const past = matches.filter((m) => m.kickoff <= now);
 
-  // pronósticos pendientes (próximos sin elegir)
-  const pendingPicks = upcoming.filter((m) => !pickByMatch.has(m.id)).length;
+  // pronósticos pendientes: solo partidos con ventana abierta (48 hs antes)
+  const pendingPicks = upcoming.filter(
+    (m) =>
+      m.homeTeam !== TBD &&
+      m.awayTeam !== TBD &&
+      m.kickoff.getTime() - now.getTime() <= PICK_WINDOW_HOURS * 3600 * 1000 &&
+      !pickByMatch.has(m.id)
+  ).length;
 
   // agrupar próximos por día (en hora argentina)
   const groups = new Map<string, typeof upcoming>();

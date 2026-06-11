@@ -13,6 +13,9 @@ export const POINTS = {
 // Reparto del pozo final (podio)
 export const PRIZE_SPLIT = [0.6, 0.3, 0.1]; // 1°, 2°, 3°
 
+// Ventana de pronóstico: se habilita N horas antes del partido
+export const PICK_WINDOW_HOURS = 48;
+
 export const COMPANY = "B2BOX";
 export const APP_NAME = "B2BOX CARGO CUP";
 export const APP_TAGLINE = "El Prode del Contenedor · Mundial 2026";
