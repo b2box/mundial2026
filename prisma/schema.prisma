@@ -34,6 +34,8 @@ model Match {
   kickoff     DateTime
   // Resultado: "HOME" gana local, "AWAY" gana visitante, "DRAW" empate, null = sin jugar
   result      String?
+  homeScore   Int?
+  awayScore   Int?
   predictions Prediction[]
   createdAt   DateTime     @default(now())
 }

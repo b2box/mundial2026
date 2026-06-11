@@ -121,6 +121,10 @@ export default async function GuiaPage() {
             En <strong>Mi cuenta</strong>: tu aporte acumulado, tus cajas y tu
             posición.
           </Faq>
+          <Faq q="¿Qué pasa si dos quedamos con las mismas cajas?">
+            Desempata quien tenga <strong>más partidos ganados</strong> (los de
+            3 cajas). Si sigue igual, se define entre ustedes.
+          </Faq>
           <Faq q="Perdí mi link, ¿qué hago?">
             Pedíselo a Gabriel (admin), que puede reenviártelo o generarte uno
             nuevo.

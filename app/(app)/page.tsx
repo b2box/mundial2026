@@ -108,6 +108,8 @@ export default async function PartidosPage({
     awayFlag: m.awayFlag,
     kickoff: m.kickoff.toISOString(),
     result: m.result as MatchView["result"],
+    homeScore: m.homeScore,
+    awayScore: m.awayScore,
     userPick: (pickByMatch.get(m.id) as MatchView["userPick"]) ?? null,
   });
 

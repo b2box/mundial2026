@@ -34,9 +34,13 @@ async function ensureSchema() {
       "awayFlag" TEXT NOT NULL DEFAULT '🏳️',
       "kickoff" TIMESTAMP(3) NOT NULL,
       "result" TEXT,
+      "homeScore" INTEGER,
+      "awayScore" INTEGER,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "Match_pkey" PRIMARY KEY ("id")
     )`,
+    `ALTER TABLE "Match" ADD COLUMN IF NOT EXISTS "homeScore" INTEGER`,
+    `ALTER TABLE "Match" ADD COLUMN IF NOT EXISTS "awayScore" INTEGER`,
     `CREATE TABLE IF NOT EXISTS "Prediction" (
       "id" TEXT NOT NULL,
       "userId" TEXT NOT NULL,

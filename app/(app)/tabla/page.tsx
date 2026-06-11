@@ -165,7 +165,8 @@ export default async function TablaPage() {
         </h2>
         <p className="text-sm text-muted mb-4">
           Al cierre del Mundial el pozo se reparte entre los tres primeros de la
-          torre.
+          torre. En caso de empate en cajas, desempata quien tenga más partidos
+          ganados.
         </p>
         <div className="grid grid-cols-3 gap-3">
           {[0, 1, 2].map((i) => (

@@ -14,6 +14,8 @@ export type MatchView = {
   awayFlag: string;
   kickoff: string; // ISO
   result: "HOME" | "AWAY" | "DRAW" | null;
+  homeScore: number | null;
+  awayScore: number | null;
   userPick: "HOME" | "AWAY" | null;
 };
 
@@ -166,7 +168,13 @@ export function MatchCard({
         >
           <TeamButton side="HOME" />
           <div className="flex flex-col items-center justify-center px-1 text-muted">
-            <span className="text-xs mono">VS</span>
+            {match.result && match.homeScore != null && match.awayScore != null ? (
+              <span className="text-base font-black text-ink mono whitespace-nowrap">
+                {match.homeScore}-{match.awayScore}
+              </span>
+            ) : (
+              <span className="text-xs mono">VS</span>
+            )}
           </div>
           <TeamButton side="AWAY" />
         </div>
