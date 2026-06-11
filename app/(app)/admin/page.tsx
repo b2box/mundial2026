@@ -9,6 +9,7 @@ import { EditMatchForm } from "./EditMatchForm";
 import { setResult, deleteMatch, regenerateToken } from "./actions";
 import { DeleteButton } from "./DeleteButton";
 import { ClearPicksButton } from "./ClearPicksButton";
+import { SyncTest } from "./SyncTest";
 import { CopyLink } from "../../components/CopyLink";
 import { baseUrlFromHeaders } from "@/lib/url";
 import { TZ } from "@/lib/constants";
@@ -60,6 +61,11 @@ export default async function AdminPage() {
           quedan como respaldo por si la fuente falla.
         </p>
       </div>
+
+      <section className="rounded-xl border border-line bg-steel-850 p-4">
+        <h2 className="font-black mb-1">🤖 Resultados automáticos</h2>
+        <SyncTest />
+      </section>
 
       <section className="rounded-xl border border-amber/40 bg-amber/5 p-4">
         <h2 className="font-black mb-1">🏆 Fixture oficial Mundial 2026</h2>

@@ -2,97 +2,98 @@ import "server-only";
 import { prisma } from "./prisma";
 import { TEAMS } from "./teams";
 
-// Sincronización automática de resultados desde TheSportsDB (gratuita).
-// Se dispara al visitar el sitio, con throttle de 10 minutos, así el admin
-// no tiene que cargar nada. Los botones del panel quedan como respaldo.
+// Sincronización automática de resultados + cruces de eliminatorias.
+// Fuentes (en orden de preferencia):
+//   1) football-data.org  (si FOOTBALL_DATA_TOKEN está seteado) — confiable
+//   2) TheSportsDB        (gratis, sin key) — respaldo
+// Corre al visitar el sitio, con throttle de 10 minutos.
 
-const LEAGUE_ID = "4429"; // FIFA World Cup
-const SEASON = "2026";
 const SYNC_INTERVAL_MS = 10 * 60 * 1000;
 const META_KEY = "lastResultsSync";
 
-// nombre en el sitio (es) -> nombre en TheSportsDB (en)
-const NAME_MAP: Record<string, string> = {
-  mexico: "mexico",
-  sudafrica: "south africa",
-  "corea del sur": "south korea",
-  chequia: "czech republic",
-  canada: "canada",
-  "bosnia y herzegovina": "bosnia",
-  catar: "qatar",
-  suiza: "switzerland",
-  brasil: "brazil",
-  marruecos: "morocco",
-  haiti: "haiti",
-  escocia: "scotland",
-  "estados unidos": "usa",
-  paraguay: "paraguay",
-  australia: "australia",
-  turquia: "turkey",
-  alemania: "germany",
-  curazao: "curacao",
-  "costa de marfil": "ivory coast",
-  ecuador: "ecuador",
-  "paises bajos": "netherlands",
-  japon: "japan",
-  suecia: "sweden",
-  tunez: "tunisia",
-  belgica: "belgium",
-  egipto: "egypt",
-  iran: "iran",
-  "nueva zelanda": "new zealand",
-  espana: "spain",
-  "cabo verde": "cape verde",
-  "arabia saudita": "saudi arabia",
-  uruguay: "uruguay",
-  francia: "france",
-  senegal: "senegal",
-  irak: "iraq",
-  noruega: "norway",
-  argentina: "argentina",
-  argelia: "algeria",
-  austria: "austria",
-  jordania: "jordan",
-  portugal: "portugal",
-  "rd congo": "dr congo",
-  uzbekistan: "uzbekistan",
-  colombia: "colombia",
-  inglaterra: "england",
-  croacia: "croatia",
-  ghana: "ghana",
-  panama: "panama",
+// nombre en el sitio (es) -> nombres posibles en las APIs (en)
+const NAME_MAP: Record<string, string[]> = {
+  méxico: ["mexico"],
+  sudáfrica: ["south africa"],
+  "corea del sur": ["south korea", "korea republic"],
+  chequia: ["czech republic", "czechia"],
+  canadá: ["canada"],
+  "bosnia y herzegovina": ["bosnia", "bosnia and herzegovina", "bosnia-herzegovina"],
+  catar: ["qatar"],
+  suiza: ["switzerland"],
+  brasil: ["brazil"],
+  marruecos: ["morocco"],
+  haití: ["haiti"],
+  escocia: ["scotland"],
+  "estados unidos": ["usa", "united states"],
+  paraguay: ["paraguay"],
+  australia: ["australia"],
+  turquía: ["turkey", "türkiye", "turkiye"],
+  alemania: ["germany"],
+  curazao: ["curacao", "curaçao"],
+  "costa de marfil": ["ivory coast", "côte d'ivoire", "cote d'ivoire"],
+  ecuador: ["ecuador"],
+  "países bajos": ["netherlands"],
+  japón: ["japan"],
+  suecia: ["sweden"],
+  túnez: ["tunisia"],
+  bélgica: ["belgium"],
+  egipto: ["egypt"],
+  irán: ["iran", "ir iran"],
+  "nueva zelanda": ["new zealand"],
+  españa: ["spain"],
+  "cabo verde": ["cape verde", "cabo verde"],
+  "arabia saudita": ["saudi arabia"],
+  uruguay: ["uruguay"],
+  francia: ["france"],
+  senegal: ["senegal"],
+  irak: ["iraq"],
+  noruega: ["norway"],
+  argentina: ["argentina"],
+  argelia: ["algeria"],
+  austria: ["austria"],
+  jordania: ["jordan"],
+  portugal: ["portugal"],
+  "rd congo": ["dr congo", "congo dr", "democratic republic of congo"],
+  uzbekistán: ["uzbekistan"],
+  colombia: ["colombia"],
+  inglaterra: ["england"],
+  croacia: ["croatia"],
+  ghana: ["ghana"],
+  panamá: ["panama"],
 };
 
 function norm(s: string): string {
-  return s
+  return (s || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9 ]/g, "")
     .trim();
 }
 
-function toEnglish(es: string): string {
-  return NAME_MAP[norm(es)] ?? norm(es);
+function aliases(ourName: string): string[] {
+  const en = NAME_MAP[ourName.toLowerCase()] ?? [];
+  return [norm(ourName), ...en.map(norm)];
 }
 
 function teamsMatch(apiName: string, ourName: string): boolean {
   const a = norm(apiName);
-  const b = toEnglish(ourName);
-  return a.includes(b) || b.includes(a);
+  if (!a) return false;
+  return aliases(ourName).some((b) => a === b || a.includes(b) || b.includes(a));
 }
 
-// Dado el nombre en inglés que viene de la API, encuentra nuestro nombre (es)
-function apiNameToOurs(apiName: string): string | null {
+export function apiNameToOurs(apiName: string): string | null {
   const a = norm(apiName);
+  if (!a) return null;
   for (const t of TEAMS) {
     if (t.name === "Por confirmar") continue;
-    const en = toEnglish(t.name);
-    if (a === en || a.includes(en) || en.includes(a)) return t.name;
+    if (aliases(t.name).some((b) => a === b || a.includes(b) || b.includes(a)))
+      return t.name;
   }
   return null;
 }
 
-// Mapea la ronda de la API a nuestra instancia
 function stageFromRound(round: string): string | null {
   const r = norm(round);
   if (r.includes("32")) return "Dieciseisavos";
@@ -105,20 +106,159 @@ function stageFromRound(round: string): string | null {
   return null;
 }
 
-type ApiEvent = {
-  strHomeTeam?: string;
-  strAwayTeam?: string;
-  intHomeScore?: string | number | null;
-  intAwayScore?: string | number | null;
-  strStatus?: string;
-  strRound?: string;
-  dateEvent?: string;
+export type NormMatch = {
+  home: string;
+  away: string;
+  hs: number | null;
+  as: number | null;
+  finished: boolean;
+  date: string; // ISO
+  stage: string | null; // instancia de eliminatoria, si aplica
 };
+
+// ---- Fuente 1: football-data.org ----
+async function fromFootballData(): Promise<NormMatch[] | null> {
+  const token = process.env.FOOTBALL_DATA_TOKEN;
+  if (!token) return null;
+  const res = await fetch(
+    "https://api.football-data.org/v4/competitions/WC/matches",
+    {
+      headers: { "X-Auth-Token": token },
+      signal: AbortSignal.timeout(8000),
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    matches?: Array<{
+      utcDate: string;
+      status: string;
+      stage: string;
+      homeTeam: { name?: string };
+      awayTeam: { name?: string };
+      score?: { fullTime?: { home?: number | null; away?: number | null } };
+    }>;
+  };
+  return (data.matches ?? [])
+    .filter((m) => m.homeTeam?.name && m.awayTeam?.name)
+    .map((m) => ({
+      home: m.homeTeam.name!,
+      away: m.awayTeam.name!,
+      hs: m.score?.fullTime?.home ?? null,
+      as: m.score?.fullTime?.away ?? null,
+      finished: m.status === "FINISHED",
+      date: m.utcDate,
+      stage: stageFromRound(m.stage),
+    }));
+}
+
+// ---- Fuente 2: TheSportsDB ----
+async function fromSportsDB(): Promise<NormMatch[] | null> {
+  const key = process.env.SPORTSDB_KEY ?? "3";
+  const res = await fetch(
+    `https://www.thesportsdb.com/api/v1/json/${key}/eventsseason.php?id=4429&s=2026`,
+    { signal: AbortSignal.timeout(8000), cache: "no-store" }
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    events?: Array<{
+      strHomeTeam?: string;
+      strAwayTeam?: string;
+      intHomeScore?: string | number | null;
+      intAwayScore?: string | number | null;
+      strStatus?: string;
+      strRound?: string;
+      dateEvent?: string;
+      strTimestamp?: string;
+    }>;
+  };
+  return (data.events ?? [])
+    .filter((e) => e.strHomeTeam && e.strAwayTeam)
+    .map((e) => {
+      const hasScore = e.intHomeScore != null && e.intAwayScore != null;
+      return {
+        home: e.strHomeTeam!,
+        away: e.strAwayTeam!,
+        hs: hasScore ? Number(e.intHomeScore) : null,
+        as: hasScore ? Number(e.intAwayScore) : null,
+        finished: hasScore && /finished|ft|aet|pen|match finished/i.test(e.strStatus ?? "FT"),
+        date: e.strTimestamp || `${e.dateEvent ?? ""}T12:00:00Z`,
+        stage: stageFromRound(e.strRound ?? ""),
+      };
+    });
+}
+
+export type Diagnostic = {
+  source: string;
+  ok: boolean;
+  total: number;
+  finished: number;
+  sample: { match: string; score: string; status: string }[];
+  error?: string;
+};
+
+// Devuelve los datos crudos + de qué fuente, para el diagnóstico del admin.
+export async function fetchProviderData(): Promise<{
+  matches: NormMatch[];
+  diag: Diagnostic;
+}> {
+  // intentar football-data primero
+  try {
+    const fd = await fromFootballData();
+    if (fd && fd.length > 0) {
+      return { matches: fd, diag: buildDiag("football-data.org", fd) };
+    }
+  } catch (e) {
+    // sigue con el respaldo
+    void e;
+  }
+  try {
+    const sdb = await fromSportsDB();
+    if (sdb) return { matches: sdb, diag: buildDiag("TheSportsDB", sdb) };
+    return {
+      matches: [],
+      diag: {
+        source: "TheSportsDB",
+        ok: false,
+        total: 0,
+        finished: 0,
+        sample: [],
+        error: "La API respondió pero sin datos.",
+      },
+    };
+  } catch (e) {
+    return {
+      matches: [],
+      diag: {
+        source: "ninguna",
+        ok: false,
+        total: 0,
+        finished: 0,
+        sample: [],
+        error: e instanceof Error ? e.message : "Error de red",
+      },
+    };
+  }
+}
+
+function buildDiag(source: string, ms: NormMatch[]): Diagnostic {
+  const fin = ms.filter((m) => m.finished);
+  return {
+    source,
+    ok: ms.length > 0,
+    total: ms.length,
+    finished: fin.length,
+    sample: ms.slice(0, 5).map((m) => ({
+      match: `${m.home} vs ${m.away}`,
+      score: m.hs != null ? `${m.hs}-${m.as}` : "—",
+      status: m.finished ? "FINALIZADO" : "programado",
+    })),
+  };
+}
 
 export async function syncResults(): Promise<void> {
   try {
     const now = Date.now();
-    // partidos definidos sin resultado que ya deberían haber terminado
     const pending = await prisma.match.findMany({
       where: {
         result: null,
@@ -127,13 +267,11 @@ export async function syncResults(): Promise<void> {
         kickoff: { lte: new Date(now - 105 * 60 * 1000) },
       },
     });
-    // slots de eliminatorias todavía sin equipos
     const tbdSlots = await prisma.match.findMany({
       where: { OR: [{ homeTeam: "Por confirmar" }, { awayTeam: "Por confirmar" }] },
     });
     if (pending.length === 0 && tbdSlots.length === 0) return;
 
-    // throttle global (tabla Meta)
     const meta = await prisma.meta.findUnique({ where: { key: META_KEY } });
     if (meta && now - Number(meta.value) < SYNC_INTERVAL_MS) return;
     await prisma.meta.upsert({
@@ -142,92 +280,53 @@ export async function syncResults(): Promise<void> {
       create: { key: META_KEY, value: String(now) },
     });
 
-    const key = process.env.SPORTSDB_KEY ?? "3";
-    const res = await fetch(
-      `https://www.thesportsdb.com/api/v1/json/${key}/eventsseason.php?id=${LEAGUE_ID}&s=${SEASON}`,
-      { signal: AbortSignal.timeout(8000), cache: "no-store" }
-    );
-    if (!res.ok) return;
-    const data = (await res.json()) as { events?: ApiEvent[] };
-    const events = data.events ?? [];
-    const finished = events.filter(
-      (e) =>
-        e.intHomeScore != null &&
-        e.intAwayScore != null &&
-        /finished|ft|aet|pen/i.test(e.strStatus ?? "FT")
-    );
+    const { matches } = await fetchProviderData();
+    if (matches.length === 0) return;
+    const finished = matches.filter((m) => m.finished && m.hs != null);
 
-    // 1) Resultados de partidos ya definidos (con goles)
+    // 1) resultados con goles
     for (const m of pending) {
       const ev = finished.find((e) => {
-        const direct =
-          teamsMatch(e.strHomeTeam ?? "", m.homeTeam) &&
-          teamsMatch(e.strAwayTeam ?? "", m.awayTeam);
-        const swapped =
-          teamsMatch(e.strHomeTeam ?? "", m.awayTeam) &&
-          teamsMatch(e.strAwayTeam ?? "", m.homeTeam);
-        if (!direct && !swapped) return false;
-        const d = new Date(`${e.dateEvent ?? ""}T12:00:00Z`).getTime();
-        return !isNaN(d) && Math.abs(d - m.kickoff.getTime()) < 36 * 3600 * 1000;
+        const direct = teamsMatch(e.home, m.homeTeam) && teamsMatch(e.away, m.awayTeam);
+        const swap = teamsMatch(e.home, m.awayTeam) && teamsMatch(e.away, m.homeTeam);
+        if (!direct && !swap) return false;
+        const d = new Date(e.date).getTime();
+        return isNaN(d) || Math.abs(d - m.kickoff.getTime()) < 48 * 3600 * 1000;
       });
       if (!ev) continue;
-
-      const evHomeIsOurHome = teamsMatch(ev.strHomeTeam ?? "", m.homeTeam);
-      const hs = Number(ev.intHomeScore);
-      const as = Number(ev.intAwayScore);
-      const ourHome = evHomeIsOurHome ? hs : as;
-      const ourAway = evHomeIsOurHome ? as : hs;
-      const result =
-        ourHome === ourAway ? "DRAW" : ourHome > ourAway ? "HOME" : "AWAY";
-
+      const homeIsHome = teamsMatch(ev.home, m.homeTeam);
+      const ourHome = homeIsHome ? ev.hs! : ev.as!;
+      const ourAway = homeIsHome ? ev.as! : ev.hs!;
+      const result = ourHome === ourAway ? "DRAW" : ourHome > ourAway ? "HOME" : "AWAY";
       await prisma.match.update({
         where: { id: m.id },
         data: { result, homeScore: ourHome, awayScore: ourAway },
       });
     }
 
-    // 2) Autocompletar cruces de eliminatorias cuando se definen
-    //    (toma eventos con ambos equipos conocidos y los asigna a un slot
-    //     TBD de la misma instancia, por orden de fecha)
+    // 2) autocompletar cruces de eliminatorias
     if (tbdSlots.length > 0) {
-      const knockoutEvents = events
-        .filter((e) => {
-          const st = stageFromRound(e.strRound ?? "");
-          return (
-            st &&
-            e.strHomeTeam &&
-            e.strAwayTeam &&
-            apiNameToOurs(e.strHomeTeam) &&
-            apiNameToOurs(e.strAwayTeam)
-          );
-        })
-        .sort(
-          (a, b) =>
-            new Date(`${a.dateEvent}T12:00:00Z`).getTime() -
-            new Date(`${b.dateEvent}T12:00:00Z`).getTime()
-        );
-
-      const usedSlots = new Set<string>();
-      for (const ev of knockoutEvents) {
-        const stage = stageFromRound(ev.strRound ?? "")!;
-        const home = apiNameToOurs(ev.strHomeTeam!)!;
-        const away = apiNameToOurs(ev.strAwayTeam!)!;
-        // ¿ya existe (definido) este cruce? evitar duplicar
-        const already = await prisma.match.findFirst({
+      const knockout = matches
+        .filter((e) => e.stage && apiNameToOurs(e.home) && apiNameToOurs(e.away))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const used = new Set<string>();
+      for (const ev of knockout) {
+        const stage = ev.stage!;
+        const home = apiNameToOurs(ev.home)!;
+        const away = apiNameToOurs(ev.away)!;
+        const exists = await prisma.match.findFirst({
           where: { stage, homeTeam: home, awayTeam: away },
         });
-        if (already) continue;
-
+        if (exists) continue;
         const slot = tbdSlots.find(
           (s) =>
             s.stage === stage &&
-            !usedSlots.has(s.id) &&
+            !used.has(s.id) &&
             (s.homeTeam === "Por confirmar" || s.awayTeam === "Por confirmar")
         );
         if (!slot) continue;
-        usedSlots.add(slot.id);
-
-        const evDate = new Date(`${ev.dateEvent}T12:00:00Z`);
+        used.add(slot.id);
+        const d = new Date(ev.date);
         await prisma.match.update({
           where: { id: slot.id },
           data: {
@@ -235,13 +334,12 @@ export async function syncResults(): Promise<void> {
             awayTeam: away,
             homeFlag: TEAMS.find((t) => t.name === home)?.flag ?? "🏳️",
             awayFlag: TEAMS.find((t) => t.name === away)?.flag ?? "🏳️",
-            kickoff: isNaN(evDate.getTime()) ? slot.kickoff : evDate,
+            kickoff: isNaN(d.getTime()) ? slot.kickoff : d,
           },
         });
       }
     }
   } catch {
-    // la API puede fallar: se reintenta en la próxima visita.
-    // El panel admin sigue teniendo botones manuales de respaldo.
+    // se reintenta en la próxima visita
   }
 }
