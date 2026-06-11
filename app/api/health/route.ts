@@ -23,6 +23,14 @@ export async function GET() {
     await ensureSeeded();
     info.users = await prisma.user.count();
     info.matches = await prisma.match.count();
+    info.predictions = await prisma.prediction.count();
+    // prueba de escritura real (detecta problemas de pool/pgbouncer)
+    await prisma.meta.upsert({
+      where: { key: "healthWrite" },
+      update: { value: String(Date.now()) },
+      create: { key: "healthWrite", value: String(Date.now()) },
+    });
+    info.dbWrite = "ok";
     info.db = "ok";
     info.ok = true;
   } catch (e) {

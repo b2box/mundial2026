@@ -33,11 +33,22 @@ export async function savePrediction(formData: FormData) {
     };
   }
 
-  await prisma.prediction.upsert({
-    where: { userId_matchId: { userId: user.id, matchId } },
-    update: { pick },
-    create: { userId: user.id, matchId, pick },
-  });
+  try {
+    await prisma.prediction.upsert({
+      where: { userId_matchId: { userId: user.id, matchId } },
+      update: { pick },
+      create: { userId: user.id, matchId, pick },
+    });
+    // verificación: leer lo guardado antes de confirmar al cliente
+    const saved = await prisma.prediction.findUnique({
+      where: { userId_matchId: { userId: user.id, matchId } },
+    });
+    if (!saved || saved.pick !== pick) {
+      return { error: "No se pudo confirmar el guardado. Probá de nuevo." };
+    }
+  } catch {
+    return { error: "Error de conexión con la base. Tocá de nuevo el equipo." };
+  }
 
   revalidatePath("/");
   revalidatePath("/mi-cuenta");

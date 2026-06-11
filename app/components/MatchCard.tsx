@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { savePrediction } from "../(app)/actions";
 
 export type MatchView = {
@@ -67,6 +68,8 @@ export function MatchCard({
   const [pick, setPick] = useState(match.userPick);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const router = useRouter();
 
   const tbd = match.homeTeam === TBD || match.awayTeam === TBD;
   const kickoffMs = new Date(match.kickoff).getTime();
@@ -82,14 +85,26 @@ export function MatchCard({
     const prev = pick;
     setPick(side);
     setError(null);
+    setSaved(false);
     const fd = new FormData();
     fd.set("matchId", match.id);
     fd.set("pick", side);
     startTransition(async () => {
-      const res = await savePrediction(fd);
-      if (res?.error) {
+      try {
+        const res = await savePrediction(fd);
+        if (res?.error) {
+          // revertir y mostrar el error bien visible: nada de fallos silenciosos
+          setPick(prev);
+          setError(res.error);
+        } else {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2500);
+          // refrescar datos del server (pozo, contadores) con el guardado confirmado
+          router.refresh();
+        }
+      } catch {
         setPick(prev);
-        setError(res.error);
+        setError("No se pudo guardar (problema de conexión). Tocá de nuevo.");
       }
     });
   }
@@ -186,7 +201,9 @@ export function MatchCard({
                       {pts > 0 ? `🎉 +${pts} cajas` : "✕ 0 cajas"}
                     </span>
                   ) : (
-                    "No pronosticaste este partido"
+                    <span className="text-rust">
+                      ✕ No elegiste: 0 cajas (como perder)
+                    </span>
                   )}
                 </>
               ) : (
@@ -202,7 +219,13 @@ export function MatchCard({
                 : "👆 Tocá al equipo que creés que gana"}
             </span>
           )}
-          {pending && <span className="text-muted mono">guardando…</span>}
+          {pending ? (
+            <span className="text-amber mono">guardando…</span>
+          ) : saved ? (
+            <span className="text-emerald-400 mono pop-in inline-block">
+              ✓ guardado
+            </span>
+          ) : null}
         </div>
 
         {/* Cajas de todos: se revelan cuando el partido cierra */}

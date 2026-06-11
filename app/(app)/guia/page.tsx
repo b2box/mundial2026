@@ -6,6 +6,7 @@ import {
   PRIZE_SPLIT,
   PICK_WINDOW_HOURS,
 } from "@/lib/constants";
+import { ReplayTour } from "./ReplayTour";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +18,10 @@ export default async function GuiaPage() {
     <div className="space-y-6 max-w-2xl mx-auto">
       <div className="text-center">
         <h1 className="text-2xl font-black">📖 Guía rápida</h1>
-        <p className="text-sm text-muted mt-1">
+        <p className="text-sm text-muted mt-1 mb-3">
           Todo lo que necesitás saber, en 1 minuto.
         </p>
+        <ReplayTour />
       </div>
 
       <Step n={1} emoji="🔗" title="Entrá con tu link">
@@ -57,8 +59,9 @@ export default async function GuiaPage() {
           <Box label="Tu equipo pierde" value="0 📦" color="text-muted" />
         </div>
         <p className="mt-2 text-muted">
-          ⚠️ Si no elegiste antes de que arranque, ese partido no te suma cajas
-          ni aporte. ¡No te lo pierdas!
+          ⚠️ <strong className="text-rust">Si no elegís antes de que arranque,
+          es como haber perdido: 0 cajas.</strong> Una vez que empieza el
+          partido no se puede elegir ni cambiar. ¡No te duermas!
         </p>
       </Step>
 

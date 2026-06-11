@@ -40,9 +40,14 @@ export default async function AppLayout({
         <nav className="border-t border-line/60">
           <div className="max-w-5xl mx-auto px-2 flex items-center gap-1 overflow-x-auto">
             <NavLink href="/" label="Jugar" icon="⚽" />
-            <NavLink href="/tabla" label="Posiciones" icon="🏆" />
+            <NavLink
+              href="/tabla"
+              label="Posiciones"
+              icon="🏆"
+              dataTour="nav-posiciones"
+            />
             <NavLink href="/mi-cuenta" label="Mi cuenta" icon="🧾" />
-            <NavLink href="/guia" label="Guía" icon="📖" />
+            <NavLink href="/guia" label="Guía" icon="📖" dataTour="nav-guia" />
             {user.isAdmin && <NavLink href="/admin" label="Admin" icon="⚙️" />}
           </div>
         </nav>

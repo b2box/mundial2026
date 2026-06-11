@@ -14,9 +14,22 @@ export const DB_ENV_CANDIDATES = [
 export function resolveDatabaseUrl(): string | undefined {
   for (const name of DB_ENV_CANDIDATES) {
     const v = process.env[name];
-    if (v) return v;
+    if (v) return fixPoolerUrl(v);
   }
   return undefined;
+}
+
+// Neon/Vercel suelen dar la URL "pooled" (PgBouncer). Prisma necesita
+// pgbouncer=true en esa URL o las escrituras fallan intermitentemente
+// ("prepared statement already exists"). Lo agregamos si falta.
+function fixPoolerUrl(url: string): string {
+  try {
+    if (!url.includes("-pooler.")) return url;
+    if (/[?&]pgbouncer=/.test(url)) return url;
+    return url + (url.includes("?") ? "&" : "?") + "pgbouncer=true&connect_timeout=15";
+  } catch {
+    return url;
+  }
 }
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };

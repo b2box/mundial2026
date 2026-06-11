@@ -10,7 +10,8 @@ import {
 } from "@/lib/constants";
 import { TBD } from "@/lib/teams";
 import { MatchCard, type MatchView } from "../components/MatchCard";
-import { WelcomeSplash } from "../components/WelcomeSplash";
+import { Onboarding } from "../components/Onboarding";
+import { ActivityFeed } from "../components/ActivityFeed";
 import { syncResults } from "@/lib/results-sync";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +38,10 @@ function argDateKey(d: Date): string {
 export default async function PartidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bienvenida?: string }>;
+  searchParams: Promise<{ bienvenida?: string; tour?: string }>;
 }) {
   const user = await requireUser();
-  const { bienvenida } = await searchParams;
+  const { bienvenida, tour } = await searchParams;
 
   // resultados automáticos (throttled, no bloquea si la API falla)
   await syncResults();
@@ -112,19 +113,20 @@ export default async function PartidosPage({
 
   return (
     <div className="space-y-7">
-      {bienvenida && (
-        <WelcomeSplash
-          name={user.name}
-          color={user.color}
-          projectedPot={board.projectedPot}
-          stake={STAKE_PER_MATCH}
-          totalMatches={TOTAL_MATCHES}
-          memberCount={board.memberCount}
-        />
-      )}
+      <Onboarding
+        bienvenida={Boolean(bienvenida)}
+        forceTour={tour === "1"}
+        name={user.name}
+        color={user.color}
+        projectedPot={board.projectedPot}
+        stake={STAKE_PER_MATCH}
+      />
 
       {/* Pozo proyectado + barra de llenado */}
-      <section className="relative rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 overflow-hidden">
+      <section
+        data-tour="pozo"
+        className="relative rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 overflow-hidden"
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="text-[11px] uppercase tracking-wide text-muted mono">
@@ -187,13 +189,17 @@ export default async function PartidosPage({
 
       {/* Te toca elegir: lo más importante, arriba de todo */}
       {pendingPicks > 0 ? (
-        <section className="rounded-xl border-2 border-amber bg-amber/10 p-4">
+        <section
+          data-tour="elegir"
+          className="rounded-xl border-2 border-amber bg-amber/10 p-4"
+        >
           <h2 className="text-lg font-black flex items-center gap-2">
             ⚡ Te toca elegir ({pendingPicks})
           </h2>
           <p className="text-sm text-muted mt-0.5 mb-3">
-            Tocá el equipo que creés que gana en cada partido. Tenés tiempo
-            hasta que arranquen.
+            Tocá el equipo que creés que gana. Tenés hasta que arranque cada
+            partido — después se sella, y si no elegiste es{" "}
+            <strong className="text-rust">0 cajas (como perder)</strong>.
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
             {toPlay.map((m, idx) => (
@@ -209,8 +215,11 @@ export default async function PartidosPage({
         )
       )}
 
+      {/* Actividad de los miembros */}
+      <ActivityFeed />
+
       {/* Próximos */}
-      <section>
+      <section data-tour="proximos">
         <h2 className="text-lg font-black mb-1 flex items-center gap-2">
           📅 Lo que viene
         </h2>
