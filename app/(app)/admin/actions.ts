@@ -5,11 +5,104 @@ import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { flagFor } from "@/lib/teams";
+import { FIXTURE_2026 } from "@/lib/fixture2026";
 
 async function requireAdmin() {
   const user = await getSessionUser();
   if (!user?.isAdmin) throw new Error("No autorizado");
   return user;
+}
+
+// Interpreta una fecha del input datetime-local como hora argentina (UTC-3)
+function parseArgDate(raw: string): Date {
+  const clean = raw.trim().replace(" ", "T");
+  // si ya trae offset o Z, respetarlo
+  if (/[+-]\d{2}:?\d{2}$|Z$/i.test(clean)) return new Date(clean);
+  return new Date(`${clean}${clean.length === 16 ? ":00" : ""}-03:00`);
+}
+
+function revalidateAll() {
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/tabla");
+  revalidatePath("/mi-cuenta");
+}
+
+// Carga el fixture oficial completo (104 partidos). Idempotente: solo
+// inserta los que faltan (clave: instancia + equipos + horario).
+export async function loadOfficialFixture(): Promise<{
+  ok?: number;
+  error?: string;
+}> {
+  await requireAdmin();
+
+  const existing = await prisma.match.findMany({
+    select: { stage: true, homeTeam: true, awayTeam: true, kickoff: true },
+  });
+  const keys = new Set(
+    existing.map(
+      (m) => `${m.stage}|${m.homeTeam}|${m.awayTeam}|${m.kickoff.toISOString()}`
+    )
+  );
+
+  const data = FIXTURE_2026.map((f) => ({
+    stage: f.stage,
+    group: f.group,
+    homeTeam: f.home,
+    awayTeam: f.away,
+    homeFlag: flagFor(f.home),
+    awayFlag: flagFor(f.away),
+    kickoff: new Date(f.kickoff),
+  })).filter(
+    (m) =>
+      !keys.has(
+        `${m.stage}|${m.homeTeam}|${m.awayTeam}|${m.kickoff.toISOString()}`
+      )
+  );
+
+  if (data.length > 0) {
+    await prisma.match.createMany({ data });
+  }
+
+  revalidateAll();
+  return { ok: data.length };
+}
+
+// Edita un partido (equipos, horario, instancia, grupo). Útil para
+// completar los cruces de eliminatorias a medida que se definen.
+export async function updateMatch(formData: FormData): Promise<{
+  ok?: boolean;
+  error?: string;
+}> {
+  await requireAdmin();
+  const matchId = String(formData.get("matchId") ?? "");
+  const homeTeam = String(formData.get("homeTeam") ?? "").trim();
+  const awayTeam = String(formData.get("awayTeam") ?? "").trim();
+  const stage = String(formData.get("stage") ?? "").trim();
+  const group = String(formData.get("group") ?? "").trim() || null;
+  const kickoffRaw = String(formData.get("kickoff") ?? "");
+
+  if (!matchId || !homeTeam || !awayTeam || !kickoffRaw) {
+    return { error: "Faltan datos." };
+  }
+  const kickoff = parseArgDate(kickoffRaw);
+  if (isNaN(kickoff.getTime())) return { error: "Horario inválido." };
+
+  await prisma.match.update({
+    where: { id: matchId },
+    data: {
+      homeTeam,
+      awayTeam,
+      homeFlag: flagFor(homeTeam),
+      awayFlag: flagFor(awayTeam),
+      stage: stage || "Fase de grupos",
+      group,
+      kickoff,
+    },
+  });
+
+  revalidateAll();
+  return { ok: true };
 }
 
 export async function createMatch(formData: FormData) {
@@ -24,7 +117,7 @@ export async function createMatch(formData: FormData) {
   if (!homeTeam || !awayTeam || !kickoffRaw) {
     return { error: "Faltan datos (equipos y horario son obligatorios)." };
   }
-  const kickoff = new Date(kickoffRaw);
+  const kickoff = parseArgDate(kickoffRaw);
   if (isNaN(kickoff.getTime())) return { error: "Horario inválido." };
 
   await prisma.match.create({
@@ -118,7 +211,7 @@ export async function bulkCreateMatches(
     if (!home || !away || !when) {
       return { error: `Línea ${i + 1}: faltan datos (Local | Visitante | Fecha).` };
     }
-    const kickoff = new Date(when.replace(" ", "T"));
+    const kickoff = parseArgDate(when);
     if (isNaN(kickoff.getTime())) {
       return { error: `Línea ${i + 1}: fecha inválida "${when}" (usá 2026-06-11 20:00).` };
     }

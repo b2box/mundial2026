@@ -4,10 +4,28 @@ import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { AddMatchForm } from "./AddMatchForm";
 import { BulkLoadForm } from "./BulkLoadForm";
+import { LoadFixtureButton } from "./LoadFixtureButton";
+import { EditMatchForm } from "./EditMatchForm";
 import { setResult, deleteMatch, regenerateToken } from "./actions";
 import { DeleteButton } from "./DeleteButton";
 import { CopyLink } from "../../components/CopyLink";
 import { baseUrlFromHeaders } from "@/lib/url";
+import { TZ } from "@/lib/constants";
+
+// Convierte una fecha a "YYYY-MM-DDTHH:mm" en hora argentina (para datetime-local)
+function toArgLocalInput(d: Date): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(d)
+    .replace(" ", "T");
+}
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +55,16 @@ export default async function AdminPage() {
           La tabla se actualiza sola.
         </p>
       </div>
+
+      <section className="rounded-xl border border-amber/40 bg-amber/5 p-4">
+        <h2 className="font-black mb-1">🏆 Fixture oficial Mundial 2026</h2>
+        <p className="text-sm text-muted mb-3">
+          Carga los 72 partidos de la fase de grupos con día y hora argentina,
+          más los 32 de eliminatorias como &quot;Por confirmar&quot; (los
+          completás con <strong>Editar</strong> cuando se definan los cruces).
+        </p>
+        <LoadFixtureButton existing={matches.length} />
+      </section>
 
       <section className="rounded-xl border border-line bg-steel-850 p-4">
         <h2 className="font-black mb-3">＋ Nuevo partido</h2>
@@ -74,16 +102,31 @@ export default async function AdminPage() {
                       {m.stage}
                       {m.group ? ` · Grupo ${m.group}` : ""} ·{" "}
                       {m.kickoff.toLocaleString("es-AR", {
+                        timeZone: TZ,
                         day: "numeric",
                         month: "short",
                         hour: "2-digit",
                         minute: "2-digit",
                       })}{" "}
-                      · {m._count.predictions} pronósticos
+                      hs arg · {m._count.predictions} pronósticos
                     </div>
                   </div>
                   <DeleteButton action={deleteMatch} matchId={m.id} />
                 </div>
+
+                <details className="mb-2">
+                  <summary className="text-xs text-muted hover:text-amber cursor-pointer select-none">
+                    ✏️ Editar partido
+                  </summary>
+                  <EditMatchForm
+                    matchId={m.id}
+                    homeTeam={m.homeTeam}
+                    awayTeam={m.awayTeam}
+                    stage={m.stage}
+                    group={m.group}
+                    kickoffLocal={toArgLocalInput(m.kickoff)}
+                  />
+                </details>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[11px] uppercase mono text-muted mr-1">

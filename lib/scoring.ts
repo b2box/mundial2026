@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { POINTS, STAKE_PER_MATCH } from "./constants";
+import { POINTS, STAKE_PER_MATCH, TOTAL_MATCHES } from "./constants";
 
 export type LeaderRow = {
   userId: string;
@@ -27,6 +27,8 @@ export function pointsForPick(
 export async function getLeaderboard(): Promise<{
   rows: LeaderRow[];
   pot: number;
+  projectedPot: number; // pozo total si se juegan los 104 partidos
+  memberCount: number;
   finishedMatches: number;
   startedMatches: number;
 }> {
@@ -96,6 +98,15 @@ export async function getLeaderboard(): Promise<{
 
   // Pozo: todos los miembros aportan por cada partido que ya arrancó
   const pot = startedMatches * users.length * STAKE_PER_MATCH;
+  // Pozo proyectado: los 104 partidos del Mundial × miembros × aporte
+  const projectedPot = TOTAL_MATCHES * users.length * STAKE_PER_MATCH;
 
-  return { rows, pot, finishedMatches, startedMatches };
+  return {
+    rows,
+    pot,
+    projectedPot,
+    memberCount: users.length,
+    finishedMatches,
+    startedMatches,
+  };
 }

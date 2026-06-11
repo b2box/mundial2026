@@ -49,8 +49,22 @@ export const TEAMS: { name: string; flag: string }[] = [
   { name: "Arabia Saudita", flag: "🇸🇦" },
   { name: "Australia", flag: "🇦🇺" },
   { name: "Catar", flag: "🇶🇦" },
+  { name: "Chequia", flag: "🇨🇿" },
+  { name: "Bosnia y Herzegovina", flag: "🇧🇦" },
+  { name: "Curazao", flag: "🇨🇼" },
+  { name: "Cabo Verde", flag: "🇨🇻" },
+  { name: "Irak", flag: "🇮🇶" },
+  { name: "RD Congo", flag: "🇨🇩" },
+  { name: "Uzbekistán", flag: "🇺🇿" },
+  { name: "Jordania", flag: "🇯🇴" },
+  { name: "Nueva Zelanda", flag: "🇳🇿" },
+  { name: "Haití", flag: "🇭🇹" },
+  { name: "Suecia", flag: "🇸🇪" },
+  { name: "Turquía", flag: "🇹🇷" },
   { name: "Por confirmar", flag: "🏳️" },
 ];
+
+export const TBD = "Por confirmar";
 
 export function flagFor(name: string): string {
   return TEAMS.find((t) => t.name === name)?.flag ?? "🏳️";

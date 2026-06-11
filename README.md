@@ -9,7 +9,7 @@ partidos eligiendo qué selección "mete en su contenedor". Acertar suma cajas
 - **Sin usuario ni contraseña**: cada miembro entra con su **link único** de
   acceso (tipo token). Abre el link y queda adentro 180 días — lo guarda en
   favoritos.
-- Por cada partido todos aportan **$1.000 ARS** al pozo.
+- Por cada partido todos aportan (obligatorio) **$500 ARS** al pozo.
 - Antes de que arranque un partido, cada uno **elige un equipo** (su "caja"):
   - el equipo **gana** → **3 cajas**
   - **empate** → **1 caja**

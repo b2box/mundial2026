@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLeaderboard } from "@/lib/scoring";
-import { formatARS, STAKE_PER_MATCH } from "@/lib/constants";
+import { formatARS, STAKE_PER_MATCH, TOTAL_MATCHES, TZ } from "@/lib/constants";
 import { MatchCard, type MatchView } from "../components/MatchCard";
 import { WelcomeSplash } from "../components/WelcomeSplash";
 
@@ -9,10 +9,21 @@ export const dynamic = "force-dynamic";
 
 function dayLabel(d: Date) {
   return d.toLocaleDateString("es-AR", {
+    timeZone: TZ,
     weekday: "long",
     day: "numeric",
     month: "long",
   });
+}
+
+// Fecha (AAAA-MM-DD) en hora argentina, para agrupar partidos por día
+function argDateKey(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
 export default async function PartidosPage({
@@ -40,10 +51,10 @@ export default async function PartidosPage({
   // pronósticos pendientes (próximos sin elegir)
   const pendingPicks = upcoming.filter((m) => !pickByMatch.has(m.id)).length;
 
-  // agrupar próximos por día
+  // agrupar próximos por día (en hora argentina)
   const groups = new Map<string, typeof upcoming>();
   for (const m of upcoming) {
-    const key = m.kickoff.toISOString().slice(0, 10);
+    const key = argDateKey(m.kickoff);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(m);
   }
@@ -63,7 +74,36 @@ export default async function PartidosPage({
 
   return (
     <div className="space-y-7">
-      {bienvenida && <WelcomeSplash name={user.name} color={user.color} />}
+      {bienvenida && (
+        <WelcomeSplash
+          name={user.name}
+          color={user.color}
+          projectedPot={board.projectedPot}
+          stake={STAKE_PER_MATCH}
+          totalMatches={TOTAL_MATCHES}
+          memberCount={board.memberCount}
+        />
+      )}
+
+      {/* Pozo proyectado */}
+      <section className="relative rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-muted mono">
+              🏆 Pozo total del Mundial
+            </div>
+            <div className="text-2xl font-black text-amber pulse-soft">
+              {formatARS(board.projectedPot)}
+            </div>
+          </div>
+          <div className="text-right text-xs text-muted mono">
+            {TOTAL_MATCHES} partidos × {board.memberCount} cracks ×{" "}
+            {formatARS(STAKE_PER_MATCH)}
+            <br />
+            Podio: 60% / 30% / 10%
+          </div>
+        </div>
+      </section>
 
       {/* Resumen */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">

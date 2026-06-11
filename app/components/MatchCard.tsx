@@ -16,15 +16,22 @@ export type MatchView = {
   userPick: "HOME" | "AWAY" | null;
 };
 
+const TZ = "America/Argentina/Buenos_Aires";
+
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleString("es-AR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return (
+    new Date(iso).toLocaleString("es-AR", {
+      timeZone: TZ,
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " hs"
+  );
 }
+
+const TBD = "Por confirmar";
 
 function pointsFor(pick: "HOME" | "AWAY" | null, result: string | null) {
   if (!pick || !result) return null;
@@ -43,7 +50,9 @@ export function MatchCard({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const locked = new Date(match.kickoff) <= new Date() || !!match.result;
+  const tbd = match.homeTeam === TBD || match.awayTeam === TBD;
+  const locked =
+    tbd || new Date(match.kickoff) <= new Date() || !!match.result;
   const pts = pointsFor(pick, match.result);
 
   function choose(side: "HOME" | "AWAY") {
@@ -121,6 +130,10 @@ export function MatchCard({
         <div className="mt-3 flex items-center justify-between text-xs min-h-5">
           {error ? (
             <span className="text-rust">{error}</span>
+          ) : tbd ? (
+            <span className="text-muted">
+              🔀 Cruce por definir — se habilita cuando estén los equipos
+            </span>
           ) : locked ? (
             <span className="text-muted">
               {match.result ? (
