@@ -35,12 +35,17 @@ export default async function LoginPage({
               ya estás adentro — guardalo en favoritos.
             </p>
 
-            {error && (
+            {error === "config" ? (
+              <div className="mt-5 rounded-lg border border-rust/40 bg-rust/10 px-3 py-2 text-sm text-rust">
+                El sitio no puede conectarse a la base de datos. Avisale al
+                admin: hay que revisar <code>DATABASE_URL</code> en Vercel.
+              </div>
+            ) : error ? (
               <div className="mt-5 rounded-lg border border-rust/40 bg-rust/10 px-3 py-2 text-sm text-rust">
                 Ese link no es válido o expiró. Pedile al admin que te reenvíe el
                 tuyo.
               </div>
-            )}
+            ) : null}
 
             <div className="mt-6 rounded-lg border border-line bg-steel-900 px-4 py-3 text-sm text-muted">
               ¿No tenés tu link?{" "}
