@@ -97,8 +97,8 @@ export default async function PartidosPage() {
                   {dayLabel(new Date(day + "T12:00:00"))}
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {ms.map((m) => (
-                    <MatchCard key={m.id} match={toView(m)} />
+                  {ms.map((m, idx) => (
+                    <MatchCard key={m.id} match={toView(m)} index={idx} />
                   ))}
                 </div>
               </div>
@@ -117,8 +117,8 @@ export default async function PartidosPage() {
             {past
               .slice()
               .reverse()
-              .map((m) => (
-                <MatchCard key={m.id} match={toView(m)} />
+              .map((m, idx) => (
+                <MatchCard key={m.id} match={toView(m)} index={idx} />
               ))}
           </div>
         </section>
@@ -148,7 +148,9 @@ function Stat({
         {label}
       </div>
       <div
-        className={`text-xl font-black mt-1 ${accent ? "text-amber" : ""}`}
+        className={`text-xl font-black mt-1 ${
+          accent ? "text-amber pulse-soft" : ""
+        }`}
       >
         {value}
       </div>

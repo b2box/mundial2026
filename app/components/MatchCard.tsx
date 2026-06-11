@@ -32,7 +32,13 @@ function pointsFor(pick: "HOME" | "AWAY" | null, result: string | null) {
   return pick === result ? 3 : 0;
 }
 
-export function MatchCard({ match }: { match: MatchView }) {
+export function MatchCard({
+  match,
+  index = 0,
+}: {
+  match: MatchView;
+  index?: number;
+}) {
   const [pick, setPick] = useState(match.userPick);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -76,20 +82,25 @@ export function MatchCard({ match }: { match: MatchView }) {
         <span className="flex-1 min-w-0">
           <span className="block font-semibold truncate">{team}</span>
           {chosen && (
-            <span className="block text-[10px] uppercase tracking-wide text-amber mono">
+            <span className="stamp-in block text-[10px] uppercase tracking-wide text-amber mono">
               📦 tu caja
             </span>
           )}
         </span>
         {match.result && isWinnerSide && (
-          <span className="text-xs font-bold text-emerald-400">GANÓ</span>
+          <span className="pulse-soft text-xs font-bold text-emerald-400">
+            GANÓ ⚽
+          </span>
         )}
       </button>
     );
   };
 
   return (
-    <div className="relative rounded-xl border border-line bg-steel-850 overflow-hidden stack-in">
+    <div
+      className="relative rounded-xl border border-line bg-steel-850 overflow-hidden stack-in"
+      style={{ animationDelay: `${Math.min(index, 8) * 0.07}s` }}
+    >
       <div className="flex items-center justify-between px-3.5 py-2 border-b border-line/60 text-[11px] mono uppercase tracking-wide text-muted">
         <span>
           {match.stage}
@@ -122,11 +133,11 @@ export function MatchCard({ match }: { match: MatchView }) {
                     <span
                       className={
                         pts > 0
-                          ? "text-emerald-400 font-semibold"
+                          ? "pop-in inline-block text-emerald-400 font-semibold"
                           : "text-muted"
                       }
                     >
-                      {pts > 0 ? `✓ +${pts} cajas` : "✕ 0 cajas"}
+                      {pts > 0 ? `🎉 +${pts} cajas` : "✕ 0 cajas"}
                     </span>
                   ) : (
                     "No pronosticaste este partido"

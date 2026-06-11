@@ -27,7 +27,7 @@ export default async function TablaPage() {
           <div className="text-[11px] uppercase tracking-wide text-muted mono">
             Pozo en juego
           </div>
-          <div className="text-2xl font-black text-amber">
+          <div className="text-2xl font-black text-amber pulse-soft">
             {formatARS(pot)}
           </div>
         </div>
@@ -45,18 +45,28 @@ export default async function TablaPage() {
                   {i + 1}
                 </div>
                 <div
-                  className="relative h-11 rounded-md corrugated flex items-center px-3 transition-all min-w-[120px]"
+                  className={`relative h-11 rounded-md corrugated flex items-center px-3 min-w-[120px] grow-x ${
+                    i === 0 ? "shimmer" : ""
+                  }`}
                   style={{
                     width: `${width}%`,
                     background: r.color,
+                    animationDelay: `${i * 0.12}s`,
                   }}
                 >
-                  <span className="font-bold text-steel-950 drop-shadow-sm truncate">
-                    {medal(i)} {r.name}
-                    {isMe && " (vos)"}
-                  </span>
-                  <span className="ml-auto pl-3 font-black text-steel-950">
-                    {r.points}
+                  <span className="fade-in-late flex items-center min-w-0 w-full">
+                    <span className="font-bold text-steel-950 drop-shadow-sm truncate">
+                      {i === 0 ? (
+                        <span className="sparkle">{medal(i)}</span>
+                      ) : (
+                        medal(i)
+                      )}{" "}
+                      {r.name}
+                      {isMe && " (vos)"}
+                    </span>
+                    <span className="ml-auto pl-3 font-black text-steel-950">
+                      {r.points}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -130,8 +140,16 @@ export default async function TablaPage() {
       </section>
 
       {/* Reparto del pozo */}
-      <section className="rounded-xl border border-line bg-steel-850 p-4">
-        <h2 className="font-black mb-1">🏆 Reparto del pozo (podio)</h2>
+      <section className="relative rounded-xl border border-line bg-steel-850 p-4 overflow-hidden">
+        <div aria-hidden className="absolute inset-x-0 top-0 h-32 pointer-events-none">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <span key={i} className="confetti" />
+          ))}
+        </div>
+        <h2 className="font-black mb-1">
+          <span className="sparkle inline-block">🏆</span> Reparto del pozo
+          (podio)
+        </h2>
         <p className="text-sm text-muted mb-4">
           Al cierre del Mundial el pozo se reparte entre los tres primeros de la
           torre.

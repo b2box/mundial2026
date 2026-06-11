@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, DB_ENV_CANDIDATES, resolveDatabaseUrl } from "@/lib/prisma";
 import { ensureSeeded } from "@/lib/ensure-seed";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,8 @@ export async function GET() {
     app: "b2box-cargo-cup",
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "desconocido",
     branch: process.env.VERCEL_GIT_COMMIT_REF ?? null,
-    hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+    hasDatabaseUrl: Boolean(resolveDatabaseUrl()),
+    dbEnvVarsPresent: DB_ENV_CANDIDATES.filter((k) => process.env[k]),
     hasSessionSecret: Boolean(process.env.SESSION_SECRET),
     db: "sin probar",
     users: null,

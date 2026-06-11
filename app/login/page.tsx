@@ -16,16 +16,27 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* fondo mundialista */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none select-none">
+        <span className="float-y absolute left-[8%] top-[14%] text-4xl opacity-15">⚽</span>
+        <span className="float-y absolute right-[10%] top-[22%] text-5xl opacity-10" style={{ animationDelay: "1.2s" }}>📦</span>
+        <span className="float-y absolute left-[16%] bottom-[18%] text-5xl opacity-10" style={{ animationDelay: "2.4s" }}>🏆</span>
+        <span className="float-y absolute right-[18%] bottom-[12%] text-4xl opacity-15" style={{ animationDelay: "0.6s" }}>⚽</span>
+        <span className="float-y absolute left-[45%] top-[6%] text-3xl opacity-10" style={{ animationDelay: "3s" }}>🚢</span>
+      </div>
+
+      <div className="relative w-full max-w-md">
         <div className="flex justify-center mb-6">
           <Brand />
         </div>
 
-        <div className="relative rounded-xl border border-line bg-steel-850 overflow-hidden shadow-2xl">
+        <div className="relative rounded-xl border border-line bg-steel-850 overflow-hidden shadow-2xl stack-in">
           <div className="hazard h-2" />
           <div className="p-7 text-center">
-            <div className="text-5xl mb-3">📦🔗</div>
+            <div className="text-5xl mb-3">
+              <span className="ball-bounce">⚽</span>📦
+            </div>
             <h1 className="text-xl font-black mb-2">
               Entrá con tu link personal
             </h1>
