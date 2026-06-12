@@ -52,11 +52,11 @@ export default async function TablaPage() {
             return (
               <div key={r.userId} className="flex items-center gap-3">
                 <div className="w-6 text-right mono text-sm text-muted">
-                  {hasRanking ? i + 1 : "–"}
+                  {hasRanking ? r.rank : "–"}
                 </div>
                 <div
                   className={`relative h-11 rounded-md corrugated flex items-center px-3 min-w-[120px] grow-x ${
-                    hasRanking && i === 0 ? "shimmer" : ""
+                    hasRanking && r.rank === 1 ? "shimmer" : ""
                   }`}
                   style={{
                     width: `${width}%`,
@@ -67,13 +67,18 @@ export default async function TablaPage() {
                   <span className="fade-in-late flex items-center min-w-0 w-full">
                     <span className="font-bold text-steel-950 drop-shadow-sm truncate">
                       {hasRanking &&
-                        (i === 0 ? (
-                          <span className="sparkle">{medal(i)}</span>
+                        (r.rank === 1 ? (
+                          <span className="sparkle">{medal(r.rank - 1)}</span>
                         ) : (
-                          medal(i)
+                          medal(r.rank - 1)
                         ))}{" "}
                       {r.name}
                       {isMe && " (vos)"}
+                      {hasRanking && r.tied && (
+                        <span className="ml-1 text-[10px] font-normal opacity-70">
+                          (empate)
+                        </span>
+                      )}
                     </span>
                     <span className="ml-auto pl-3 font-black text-steel-950">
                       {r.points}
@@ -116,7 +121,7 @@ export default async function TablaPage() {
                     }`}
                   >
                     <td className="px-3 py-2.5 mono text-muted">
-                      {hasRanking ? i + 1 : "–"}
+                      {hasRanking ? r.rank : "–"}
                     </td>
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center gap-2">
@@ -164,26 +169,36 @@ export default async function TablaPage() {
           (podio)
         </h2>
         <p className="text-sm text-muted mb-4">
-          Al cierre del Mundial el pozo se reparte entre los tres primeros de la
-          torre. En caso de empate en cajas, desempata quien tenga más partidos
-          ganados.
+          Al cierre del Mundial el pozo se reparte entre los tres primeros.
+          Primero por cajas; si hay empate, desempata quien ganó más partidos.
+          Si aun así siguen iguales, ese premio se reparte entre los empatados.
         </p>
         <div className="grid grid-cols-3 gap-3">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="rounded-lg border border-line bg-steel-900 p-3 text-center"
-            >
-              <div className="text-2xl">{medal(i)}</div>
-              <div className="text-[11px] uppercase tracking-wide text-muted mono mt-1">
-                {Math.round(PRIZE_SPLIT[i] * 100)}% ·{" "}
-                {hasRanking ? (rows[i]?.name ?? "—") : "por definir"}
+          {[1, 2, 3].map((pos, i) => {
+            // quiénes ocupan esta posición (puede ser 0, 1 o varios empatados)
+            const here = hasRanking ? rows.filter((r) => r.rank === pos) : [];
+            const label = !hasRanking
+              ? "por definir"
+              : here.length === 0
+                ? "—"
+                : here.length === 1
+                  ? here[0].name
+                  : "Empate: " + here.map((r) => r.name).join(", ");
+            return (
+              <div
+                key={pos}
+                className="rounded-lg border border-line bg-steel-900 p-3 text-center"
+              >
+                <div className="text-2xl">{medal(i)}</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted mono mt-1 min-h-8">
+                  {Math.round(PRIZE_SPLIT[i] * 100)}% · {label}
+                </div>
+                <div className="font-black text-amber mt-0.5">
+                  {formatARS(podium[i])}
+                </div>
               </div>
-              <div className="font-black text-amber mt-0.5">
-                {formatARS(podium[i])}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>

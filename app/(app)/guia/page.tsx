@@ -122,8 +122,10 @@ export default async function GuiaPage() {
             posición.
           </Faq>
           <Faq q="¿Qué pasa si dos quedamos con las mismas cajas?">
-            Desempata quien tenga <strong>más partidos ganados</strong> (los de
-            3 cajas). Si sigue igual, se define entre ustedes.
+            Comparten posición. Desempata quien tenga{" "}
+            <strong>más partidos ganados</strong> (los de 3 cajas). Si aun así
+            siguen iguales, ese premio se <strong>reparte</strong> entre los
+            empatados — nunca se decide por nombre.
           </Faq>
           <Faq q="Perdí mi link, ¿qué hago?">
             Pedíselo a Gabriel (admin), que puede reenviártelo o generarte uno

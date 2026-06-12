@@ -13,6 +13,8 @@ export type LeaderRow = {
   losses: number;
   missed: number; // partidos jugados que NO pronosticó
   aporte: number; // ARS aportados al pozo (automático: $ por cada pronóstico)
+  rank: number; // posición (empates comparten número)
+  tied: boolean; // true si comparte posición con otro
 };
 
 export function pointsForPick(
@@ -87,13 +89,27 @@ export async function getLeaderboard(): Promise<{
       missed,
       // Aporte automático: cada pronóstico hecho suma al pozo
       aporte: userPreds.length * STAKE_PER_MATCH,
+      rank: 0,
+      tied: false,
     };
   });
 
+  // Orden: puntos, luego victorias (desempate). El nombre solo decide el
+  // orden de listado visual, NO la posición: los empates comparten rank.
   rows.sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     if (b.wins !== a.wins) return b.wins - a.wins;
     return a.name.localeCompare(b.name);
+  });
+
+  // Ranking estilo competición: mismos puntos Y victorias => misma posición
+  const sameRank = (a: LeaderRow, b: LeaderRow) =>
+    a.points === b.points && a.wins === b.wins;
+  rows.forEach((r, i) => {
+    r.rank = i > 0 && sameRank(r, rows[i - 1]) ? rows[i - 1].rank : i + 1;
+  });
+  rows.forEach((r) => {
+    r.tied = rows.some((o) => o.userId !== r.userId && o.rank === r.rank);
   });
 
   // Pozo captado: $ por cada pronóstico hecho (automático al elegir)

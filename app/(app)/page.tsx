@@ -59,7 +59,7 @@ export default async function PartidosPage({
 
   const pickByMatch = new Map(myPreds.map((p) => [p.matchId, p.pick]));
   const myRow = board.rows.find((r) => r.userId === user.id);
-  const myRank = board.rows.findIndex((r) => r.userId === user.id) + 1;
+  const myRank = myRow?.rank ?? 0;
 
   const allPicksByMatch = new Map<
     string,
@@ -183,7 +183,9 @@ export default async function PartidosPage({
         <Stat
           label="Tu posición"
           value={
-            board.finishedMatches > 0 && myRank > 0 ? `#${myRank}` : "—"
+            board.finishedMatches > 0 && myRank > 0
+              ? `#${myRank}${myRow?.tied ? " (empate)" : ""}`
+              : "—"
           }
         />
         <Stat label="Tu aporte" value={formatARS(myRow?.aporte ?? 0)} />
