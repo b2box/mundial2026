@@ -153,26 +153,60 @@ async function fromFootballData(): Promise<NormMatch[] | null> {
 }
 
 // ---- Fuente 2: TheSportsDB ----
+// La key gratis devuelve ventanas chicas, así que combinamos dos endpoints:
+//   eventsseason  -> calendario de la temporada (para cruces/programados)
+//   eventspastleague -> los 15 resultados más recientes (recién jugados)
 async function fromSportsDB(): Promise<NormMatch[] | null> {
   const key = process.env.SPORTSDB_KEY ?? "3";
-  const res = await fetch(
-    `https://www.thesportsdb.com/api/v1/json/${key}/eventsseason.php?id=4429&s=2026`,
-    { signal: AbortSignal.timeout(8000), cache: "no-store" }
-  );
-  if (!res.ok) return null;
-  const data = (await res.json()) as {
-    events?: Array<{
-      strHomeTeam?: string;
-      strAwayTeam?: string;
-      intHomeScore?: string | number | null;
-      intAwayScore?: string | number | null;
-      strStatus?: string;
-      strRound?: string;
-      dateEvent?: string;
-      strTimestamp?: string;
-    }>;
+  const base = `https://www.thesportsdb.com/api/v1/json/${key}`;
+
+  type SdbEvent = {
+    idEvent?: string;
+    strHomeTeam?: string;
+    strAwayTeam?: string;
+    intHomeScore?: string | number | null;
+    intAwayScore?: string | number | null;
+    strStatus?: string;
+    strRound?: string;
+    dateEvent?: string;
+    strTimestamp?: string;
   };
-  return (data.events ?? [])
+
+  async function grab(url: string, field: "events" | "results"): Promise<SdbEvent[]> {
+    try {
+      const r = await fetch(url, {
+        signal: AbortSignal.timeout(8000),
+        cache: "no-store",
+      });
+      if (!r.ok) return [];
+      const j = (await r.json()) as Record<string, SdbEvent[] | null>;
+      return j[field] ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  const [season, past] = await Promise.all([
+    grab(`${base}/eventsseason.php?id=4429&s=2026`, "events"),
+    grab(`${base}/eventspastleague.php?id=4429`, "results"),
+  ]);
+
+  if (season.length === 0 && past.length === 0) return null;
+
+  // combinar y deduplicar por idEvent (o por equipos+fecha)
+  const byKey = new Map<string, SdbEvent>();
+  for (const e of [...season, ...past]) {
+    const k =
+      e.idEvent ??
+      `${e.strHomeTeam}|${e.strAwayTeam}|${e.dateEvent}`;
+    // preferir la versión con goles cargados
+    const prev = byKey.get(k);
+    if (!prev || (e.intHomeScore != null && prev.intHomeScore == null)) {
+      byKey.set(k, e);
+    }
+  }
+
+  return [...byKey.values()]
     .filter((e) => e.strHomeTeam && e.strAwayTeam)
     .map((e) => {
       const hasScore = e.intHomeScore != null && e.intAwayScore != null;
@@ -181,7 +215,9 @@ async function fromSportsDB(): Promise<NormMatch[] | null> {
         away: e.strAwayTeam!,
         hs: hasScore ? Number(e.intHomeScore) : null,
         as: hasScore ? Number(e.intAwayScore) : null,
-        finished: hasScore && /finished|ft|aet|pen|match finished/i.test(e.strStatus ?? "FT"),
+        finished:
+          hasScore &&
+          /finished|ft|aet|pen|match finished/i.test(e.strStatus ?? "FT"),
         date: e.strTimestamp || `${e.dateEvent ?? ""}T12:00:00Z`,
         stage: stageFromRound(e.strRound ?? ""),
       };
