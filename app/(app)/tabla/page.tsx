@@ -13,7 +13,37 @@ export default async function TablaPage() {
   // sin partidos terminados no hay ranking: la torre se muestra neutral
   const hasRanking = finishedMatches > 0;
   const maxPoints = Math.max(1, ...rows.map((r) => r.points));
-  const podium = PRIZE_SPLIT.map((pct) => Math.round(pot * pct));
+
+  // Reparto justo del pozo: los empatados suman los premios de las posiciones
+  // que ocupan y los dividen en partes iguales. Devuelve grupos premiados.
+  type PrizeGroup = {
+    rank: number;
+    names: string[];
+    fractionEach: number;
+    amountEach: number;
+  };
+  const prizeGroups: PrizeGroup[] = [];
+  if (hasRanking) {
+    let i = 0;
+    while (i < rows.length) {
+      const rank = rows[i].rank;
+      let j = i;
+      while (j < rows.length && rows[j].rank === rank) j++;
+      const size = j - i;
+      let frac = 0;
+      for (let pos = rank; pos < rank + size; pos++) frac += PRIZE_SPLIT[pos - 1] ?? 0;
+      if (frac > 0) {
+        const fractionEach = frac / size;
+        prizeGroups.push({
+          rank,
+          names: rows.slice(i, j).map((r) => r.name),
+          fractionEach,
+          amountEach: Math.round(pot * fractionEach),
+        });
+      }
+      i = j;
+    }
+  }
 
   return (
     <div className="space-y-7">
@@ -166,40 +196,72 @@ export default async function TablaPage() {
         </div>
         <h2 className="font-black mb-1">
           <span className="sparkle inline-block">🏆</span> Reparto del pozo
-          (podio)
         </h2>
         <p className="text-sm text-muted mb-4">
-          Al cierre del Mundial el pozo se reparte entre los tres primeros.
-          Primero por cajas; si hay empate, desempata quien ganó más partidos.
-          Si aun así siguen iguales, ese premio se reparte entre los empatados.
+          {hasRanking ? (
+            <>
+              Si terminara hoy, el pozo de{" "}
+              <strong className="text-amber">{formatARS(pot)}</strong> se
+              repartiría así. Los empatados suman los premios de sus posiciones y
+              los dividen en partes iguales.
+            </>
+          ) : (
+            <>
+              Al cierre del Mundial el pozo se reparte 60% / 30% / 10% entre los
+              tres primeros. Si hay empate, desempata quien ganó más partidos; si
+              aun así siguen iguales, ese premio se reparte entre los empatados.
+            </>
+          )}
         </p>
-        <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3].map((pos, i) => {
-            // quiénes ocupan esta posición (puede ser 0, 1 o varios empatados)
-            const here = hasRanking ? rows.filter((r) => r.rank === pos) : [];
-            const label = !hasRanking
-              ? "por definir"
-              : here.length === 0
-                ? "—"
-                : here.length === 1
-                  ? here[0].name
-                  : "Empate: " + here.map((r) => r.name).join(", ");
-            return (
+
+        {!hasRanking ? (
+          <div className="grid grid-cols-3 gap-3">
+            {[0, 1, 2].map((i) => (
               <div
-                key={pos}
+                key={i}
                 className="rounded-lg border border-line bg-steel-900 p-3 text-center"
               >
                 <div className="text-2xl">{medal(i)}</div>
-                <div className="text-[11px] uppercase tracking-wide text-muted mono mt-1 min-h-8">
-                  {Math.round(PRIZE_SPLIT[i] * 100)}% · {label}
+                <div className="text-[11px] uppercase tracking-wide text-muted mono mt-1">
+                  {Math.round(PRIZE_SPLIT[i] * 100)}% · por definir
                 </div>
                 <div className="font-black text-amber mt-0.5">
-                  {formatARS(podium[i])}
+                  {formatARS(Math.round(pot * PRIZE_SPLIT[i]))}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {prizeGroups.map((g, i) => (
+              <div
+                key={g.rank}
+                className="flex items-center gap-3 rounded-lg border border-line bg-steel-900 p-3"
+              >
+                <div className="text-2xl">{medal(i)}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold truncate">
+                    {g.names.length > 1
+                      ? `Empate: ${g.names.join(", ")}`
+                      : g.names[0]}
+                  </div>
+                  <div className="text-[11px] text-muted mono">
+                    {Math.round(g.fractionEach * 100)}% del pozo
+                    {g.names.length > 1 ? " · cada uno" : ""}
+                  </div>
+                </div>
+                <div className="text-right font-black text-amber">
+                  {formatARS(g.amountEach)}
+                  {g.names.length > 1 && (
+                    <span className="block text-[10px] font-normal text-muted">
+                      c/u
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
