@@ -85,8 +85,17 @@ export function ActivityFeed() {
                 style={{ background: i.color }}
               />
               <span className="truncate">
-                <strong>{i.mine ? "Vos" : i.name}</strong>{" "}
-                <span className="text-muted">📦 jugó en</span> {i.match}
+                {i.mine ? (
+                  <>
+                    <strong>Jugaste</strong>{" "}
+                    <span className="text-muted">📦 en</span> {i.match}
+                  </>
+                ) : (
+                  <>
+                    <strong>{i.name}</strong>{" "}
+                    <span className="text-muted">📦 jugó en</span> {i.match}
+                  </>
+                )}
               </span>
               <span className="ml-auto shrink-0 text-[11px] mono text-muted">
                 {ago(i.at)}
