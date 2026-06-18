@@ -47,15 +47,18 @@ export default async function AdminPage() {
       include: { _count: { select: { predictions: true } } },
     }),
     prisma.prediction.findMany({
-      select: { userId: true, matchId: true, pick: true },
+      select: { userId: true, matchId: true, pick: true, updatedAt: true },
     }),
   ]);
 
-  // matchId -> { userId: pick }
-  const picksByMatch = new Map<string, Record<string, string>>();
+  // matchId -> { userId: { pick, at } }
+  const picksByMatch = new Map<
+    string,
+    Record<string, { pick: string; at: string }>
+  >();
   for (const p of allPreds) {
     const m = picksByMatch.get(p.matchId) ?? {};
-    m[p.userId] = p.pick;
+    m[p.userId] = { pick: p.pick, at: p.updatedAt.toISOString() };
     picksByMatch.set(p.matchId, m);
   }
   const memberList = members.map((m) => ({

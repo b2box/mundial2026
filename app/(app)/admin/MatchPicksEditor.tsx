@@ -12,7 +12,7 @@ export function MatchPicksEditor({
   homeFlag,
   awayFlag,
   members,
-  picks, // userId -> "HOME" | "AWAY"
+  picks, // userId -> { pick, at }
 }: {
   matchId: string;
   homeTeam: string;
@@ -20,11 +20,23 @@ export function MatchPicksEditor({
   homeFlag: string;
   awayFlag: string;
   members: Member[];
-  picks: Record<string, string>;
+  picks: Record<string, { pick: string; at: string }>;
 }) {
-  const [local, setLocal] = useState<Record<string, string>>(picks);
+  const initial: Record<string, string> = {};
+  for (const [uid, v] of Object.entries(picks)) initial[uid] = v.pick;
+
+  const [local, setLocal] = useState<Record<string, string>>(initial);
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
+
+  const fmtAt = (iso: string) =>
+    new Date(iso).toLocaleString("es-AR", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   function set(userId: string, pick: string) {
     setBusy(userId);
@@ -63,7 +75,14 @@ export function MatchPicksEditor({
               className="w-2.5 h-2.5 rounded-sm border border-white/20 shrink-0"
               style={{ background: m.color }}
             />
-            <span className="w-20 truncate">{m.name}</span>
+            <span className="w-20 truncate">
+              {m.name}
+              {picks[m.id]?.at && (
+                <span className="block text-[9px] text-muted mono leading-tight">
+                  {fmtAt(picks[m.id].at)}
+                </span>
+              )}
+            </span>
             <div className="flex gap-1 ml-auto">
               <button
                 disabled={pending}
