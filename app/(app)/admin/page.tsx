@@ -6,6 +6,7 @@ import { AddMatchForm } from "./AddMatchForm";
 import { BulkLoadForm } from "./BulkLoadForm";
 import { LoadFixtureButton } from "./LoadFixtureButton";
 import { EditMatchForm } from "./EditMatchForm";
+import { MatchPicksEditor } from "./MatchPicksEditor";
 import { setResult, deleteMatch, regenerateToken } from "./actions";
 import { DeleteButton } from "./DeleteButton";
 import { ClearPicksButton } from "./ClearPicksButton";
@@ -36,7 +37,7 @@ export default async function AdminPage() {
   if (!user) redirect("/login");
   if (!user.isAdmin) redirect("/");
 
-  const [matches, members] = await Promise.all([
+  const [matches, members, allPreds] = await Promise.all([
     prisma.match.findMany({
       orderBy: { kickoff: "asc" },
       include: { _count: { select: { predictions: true } } },
@@ -45,7 +46,23 @@ export default async function AdminPage() {
       orderBy: { name: "asc" },
       include: { _count: { select: { predictions: true } } },
     }),
+    prisma.prediction.findMany({
+      select: { userId: true, matchId: true, pick: true },
+    }),
   ]);
+
+  // matchId -> { userId: pick }
+  const picksByMatch = new Map<string, Record<string, string>>();
+  for (const p of allPreds) {
+    const m = picksByMatch.get(p.matchId) ?? {};
+    m[p.userId] = p.pick;
+    picksByMatch.set(p.matchId, m);
+  }
+  const memberList = members.map((m) => ({
+    id: m.id,
+    name: m.name,
+    color: m.color,
+  }));
 
   const base = baseUrlFromHeaders(await headers());
 
@@ -136,6 +153,21 @@ export default async function AdminPage() {
                     stage={m.stage}
                     group={m.group}
                     kickoffLocal={toArgLocalInput(m.kickoff)}
+                  />
+                </details>
+
+                <details className="mb-2">
+                  <summary className="text-xs text-muted hover:text-amber cursor-pointer select-none">
+                    👥 Ver/corregir pronósticos ({m._count.predictions})
+                  </summary>
+                  <MatchPicksEditor
+                    matchId={m.id}
+                    homeTeam={m.homeTeam}
+                    awayTeam={m.awayTeam}
+                    homeFlag={m.homeFlag}
+                    awayFlag={m.awayFlag}
+                    members={memberList}
+                    picks={picksByMatch.get(m.id) ?? {}}
                   />
                 </details>
 

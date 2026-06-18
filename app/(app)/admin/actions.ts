@@ -191,6 +191,33 @@ export async function clearMemberPredictions(
   return { ok: r.count };
 }
 
+// Fija/corrige el pronóstico de un miembro en un partido (uso admin, para
+// resolver reclamos: ej. eligió pero no se guardó). Funciona aunque el
+// partido ya esté cerrado, y recalcula puntos/pozo.
+export async function setMemberPick(
+  formData: FormData
+): Promise<{ ok?: boolean; error?: string }> {
+  await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const matchId = String(formData.get("matchId") ?? "");
+  const pick = String(formData.get("pick") ?? "");
+  if (!userId || !matchId) return { error: "Faltan datos." };
+
+  if (pick === "CLEAR") {
+    await prisma.prediction.deleteMany({ where: { userId, matchId } });
+  } else if (pick === "HOME" || pick === "AWAY") {
+    await prisma.prediction.upsert({
+      where: { userId_matchId: { userId, matchId } },
+      update: { pick },
+      create: { userId, matchId, pick },
+    });
+  } else {
+    return { error: "Pronóstico inválido." };
+  }
+  revalidateAll();
+  return { ok: true };
+}
+
 // Carga masiva de partidos. Formato por línea:
 //   Local | Visitante | 2026-06-11 20:00 | A | Fase de grupos
 // (el grupo y la instancia son opcionales)
