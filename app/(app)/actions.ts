@@ -23,6 +23,12 @@ export async function savePrediction(formData: FormData) {
     return { error: "Este cruce todavía no está definido." };
   }
 
+  // Si ya hay resultado, el partido terminó: nunca se puede votar (aunque el
+  // horario cargado estuviera mal).
+  if (match.result) {
+    return { error: "El partido ya terminó, no se puede pronosticar." };
+  }
+
   const now = Date.now();
   if (match.kickoff.getTime() <= now) {
     return { error: "El partido ya arrancó, no se puede pronosticar." };

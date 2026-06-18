@@ -295,18 +295,19 @@ function buildDiag(source: string, ms: NormMatch[]): Diagnostic {
 export async function syncResults(): Promise<void> {
   try {
     const now = Date.now();
-    const pending = await prisma.match.findMany({
+    // partidos definidos sin resultado (cualquier horario: queremos también
+    // corregir horarios mal cargados y cerrar por resultado de la API)
+    const active = await prisma.match.findMany({
       where: {
         result: null,
         homeTeam: { not: "Por confirmar" },
         awayTeam: { not: "Por confirmar" },
-        kickoff: { lte: new Date(now - 105 * 60 * 1000) },
       },
     });
     const tbdSlots = await prisma.match.findMany({
       where: { OR: [{ homeTeam: "Por confirmar" }, { awayTeam: "Por confirmar" }] },
     });
-    if (pending.length === 0 && tbdSlots.length === 0) return;
+    if (active.length === 0 && tbdSlots.length === 0) return;
 
     const meta = await prisma.meta.findUnique({ where: { key: META_KEY } });
     if (meta && now - Number(meta.value) < SYNC_INTERVAL_MS) return;
@@ -318,29 +319,55 @@ export async function syncResults(): Promise<void> {
 
     const { matches } = await fetchProviderData();
     if (matches.length === 0) return;
-    const finished = matches.filter((m) => m.finished && m.hs != null);
 
-    // 1) resultados con goles
-    for (const m of pending) {
-      const ev = finished.find((e) => {
-        const direct = teamsMatch(e.home, m.homeTeam) && teamsMatch(e.away, m.awayTeam);
-        const swap = teamsMatch(e.home, m.awayTeam) && teamsMatch(e.away, m.homeTeam);
+    // busca el partido de la API que corresponde a uno nuestro (por equipos,
+    // con una ventana de fecha amplia para tolerar horarios mal cargados)
+    const findApi = (homeTeam: string, awayTeam: string, kickoff: Date) =>
+      matches.find((e) => {
+        const direct = teamsMatch(e.home, homeTeam) && teamsMatch(e.away, awayTeam);
+        const swap = teamsMatch(e.home, awayTeam) && teamsMatch(e.away, homeTeam);
         if (!direct && !swap) return false;
         const d = new Date(e.date).getTime();
-        return isNaN(d) || Math.abs(d - m.kickoff.getTime()) < 48 * 3600 * 1000;
+        return isNaN(d) || Math.abs(d - kickoff.getTime()) < 5 * 24 * 3600 * 1000;
       });
+
+    for (const m of active) {
+      const ev = findApi(m.homeTeam, m.awayTeam, m.kickoff);
       if (!ev) continue;
-      const homeIsHome = teamsMatch(ev.home, m.homeTeam);
-      const ourHome = homeIsHome ? ev.hs! : ev.as!;
-      const ourAway = homeIsHome ? ev.as! : ev.hs!;
-      const result = ourHome === ourAway ? "DRAW" : ourHome > ourAway ? "HOME" : "AWAY";
-      await prisma.match.update({
-        where: { id: m.id },
-        data: { result, homeScore: ourHome, awayScore: ourAway },
-      });
+
+      const data: {
+        kickoff?: Date;
+        result?: string;
+        homeScore?: number;
+        awayScore?: number;
+      } = {};
+
+      // 1) corregir horario si difiere > 90 min del real (fuente: API)
+      const apiDate = new Date(ev.date);
+      if (
+        !isNaN(apiDate.getTime()) &&
+        Math.abs(apiDate.getTime() - m.kickoff.getTime()) > 90 * 60 * 1000
+      ) {
+        data.kickoff = apiDate;
+      }
+
+      // 2) cargar resultado si la API lo da por finalizado (no depende de
+      //    nuestro horario, así un partido terminado queda cerrado igual)
+      if (ev.finished && ev.hs != null && ev.as != null) {
+        const homeIsHome = teamsMatch(ev.home, m.homeTeam);
+        const ourHome = homeIsHome ? ev.hs : ev.as;
+        const ourAway = homeIsHome ? ev.as : ev.hs;
+        data.result = ourHome === ourAway ? "DRAW" : ourHome > ourAway ? "HOME" : "AWAY";
+        data.homeScore = ourHome;
+        data.awayScore = ourAway;
+      }
+
+      if (Object.keys(data).length > 0) {
+        await prisma.match.update({ where: { id: m.id }, data });
+      }
     }
 
-    // 2) autocompletar cruces de eliminatorias
+    // 3) autocompletar cruces de eliminatorias
     if (tbdSlots.length > 0) {
       const knockout = matches
         .filter((e) => e.stage && apiNameToOurs(e.home) && apiNameToOurs(e.away))
