@@ -155,7 +155,7 @@ export default async function PartidosPage({
             </span>
             <span>
               {Math.round((board.pot / board.projectedPot) * 100)}% ·{" "}
-              {Math.round(board.pot / STAKE_PER_MATCH)} pronósticos
+              {board.startedMatches}/{TOTAL_MATCHES} partidos
             </span>
           </div>
           <div className="h-3.5 rounded-full bg-steel-900 border border-line overflow-hidden">
@@ -170,8 +170,9 @@ export default async function PartidosPage({
             />
           </div>
           <div className="text-[10px] text-muted mono mt-1">
-            Cada pronóstico suma {formatARS(STAKE_PER_MATCH)} al pozo,
-            automáticamente
+            Cada partido jugado suma{" "}
+            {formatARS(STAKE_PER_MATCH * board.memberCount)}: aportan todos (
+            {formatARS(STAKE_PER_MATCH)} c/u), elijas o no
           </div>
         </div>
       </section>

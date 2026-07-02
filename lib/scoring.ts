@@ -12,7 +12,7 @@ export type LeaderRow = {
   draws: number;
   losses: number;
   missed: number; // partidos jugados que NO pronosticó
-  aporte: number; // ARS aportados al pozo (automático: $ por cada pronóstico)
+  aporte: number; // ARS que debe al pozo: $ por cada partido jugado, elija o no
   rank: number; // posición (empates comparten número)
   tied: boolean; // true si comparte posición con otro
 };
@@ -87,8 +87,9 @@ export async function getLeaderboard(): Promise<{
       draws,
       losses,
       missed,
-      // Aporte automático: cada pronóstico hecho suma al pozo
-      aporte: userPreds.length * STAKE_PER_MATCH,
+      // Aporte igual para todos: $ por cada partido que ya arrancó,
+      // haya elegido o no (no elegir pierde puntos, no exime de pagar)
+      aporte: startedMatches * STAKE_PER_MATCH,
       rank: 0,
       tied: false,
     };
@@ -112,8 +113,8 @@ export async function getLeaderboard(): Promise<{
     r.tied = rows.some((o) => o.userId !== r.userId && o.rank === r.rank);
   });
 
-  // Pozo captado: $ por cada pronóstico hecho (automático al elegir)
-  const pot = predictions.length * STAKE_PER_MATCH;
+  // Pozo captado: todos aportan por cada partido que ya arrancó
+  const pot = startedMatches * users.length * STAKE_PER_MATCH;
   // Pozo proyectado: los 104 partidos del Mundial × miembros × aporte
   const projectedPot = TOTAL_MATCHES * users.length * STAKE_PER_MATCH;
 

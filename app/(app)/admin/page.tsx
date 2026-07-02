@@ -10,6 +10,7 @@ import { MatchPicksEditor } from "./MatchPicksEditor";
 import { setResult, deleteMatch, regenerateToken } from "./actions";
 import { DeleteButton } from "./DeleteButton";
 import { ClearPicksButton } from "./ClearPicksButton";
+import { DeleteMemberButton } from "./DeleteMemberButton";
 import { SyncTest } from "./SyncTest";
 import { CopyLink } from "../../components/CopyLink";
 import { baseUrlFromHeaders } from "@/lib/url";
@@ -251,6 +252,9 @@ export default async function AdminPage() {
                       Regenerar
                     </button>
                   </form>
+                  {!m.isAdmin && (
+                    <DeleteMemberButton userId={m.id} name={m.name} />
+                  )}
                 </div>
               </div>
               <CopyLink url={`${base}/acceso/${m.token}`} compact />

@@ -32,7 +32,7 @@ export function TourGuide({
         target: '[data-tour="pozo"]',
         emoji: "💰",
         title: "El pozo",
-        text: `Cada pronóstico que hacés suma ${fmtARS(stake)} acá, automáticamente. Esta barra muestra cuánto se juntó. Si jugamos todos todo el Mundial, llega a ${fmtARS(projectedPot)}.`,
+        text: `Por cada partido que se juega, todos aportan ${fmtARS(stake)} — elijas o no. Esta barra muestra cuánto se juntó; al final del Mundial llega a ${fmtARS(projectedPot)}.`,
       },
       {
         target: '[data-tour="elegir"]',

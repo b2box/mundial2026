@@ -60,20 +60,21 @@ export default async function GuiaPage() {
         </div>
         <p className="mt-2 text-muted">
           ⚠️ <strong className="text-rust">Si no elegís antes de que arranque,
-          es como haber perdido: 0 cajas.</strong> Una vez que empieza el
-          partido no se puede elegir ni cambiar. ¡No te duermas!
+          es como haber perdido: 0 cajas — pero el aporte lo pagás igual.
+          </strong>{" "}
+          Una vez que empieza el partido no se puede elegir ni cambiar. ¡No te
+          duermas!
         </p>
       </Step>
 
       <Step n={4} emoji="💰" title="El pozo">
         <strong>
-          Cada pronóstico que hacés suma {formatARS(STAKE_PER_MATCH)} tuyos al
-          pozo, automáticamente.
+          Por cada partido que se juega, todos aportan{" "}
+          {formatARS(STAKE_PER_MATCH)} — hayan elegido o no.
         </strong>{" "}
-        La idea es jugar los {TOTAL_MATCHES} partidos del Mundial: si los{" "}
-        {board.memberCount} jugamos todos, el pozo llega a{" "}
-        <strong className="text-amber">{formatARS(pot)}</strong>. En la pantalla
-        principal ves la barra de cómo se va llenando.
+        Con {TOTAL_MATCHES} partidos y {board.memberCount} jugadores, el pozo
+        final llega a <strong className="text-amber">{formatARS(pot)}</strong>.
+        En la pantalla principal ves la barra de cómo se va llenando.
       </Step>
 
       <Step n={5} emoji="🏆" title="Los premios">

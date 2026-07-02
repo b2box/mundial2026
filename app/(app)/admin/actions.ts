@@ -191,6 +191,32 @@ export async function clearMemberPredictions(
   return { ok: r.count };
 }
 
+// Elimina a un miembro por completo: pronósticos + cuenta. Su link deja de
+// funcionar y su sesión muere al instante (la sesión valida contra la DB).
+// El pozo baja solo porque se calcula sobre los pronósticos existentes.
+export async function deleteMember(
+  formData: FormData
+): Promise<{ ok?: boolean; error?: string }> {
+  const admin = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return { error: "Falta el miembro." };
+  if (userId === admin.id) {
+    return { error: "No podés eliminarte a vos mismo." };
+  }
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { error: "Miembro no encontrado." };
+  if (target.isAdmin) {
+    return { error: "No se puede eliminar a un admin." };
+  }
+
+  // sin FK en runtime: borrar primero sus pronósticos, después la cuenta
+  await prisma.prediction.deleteMany({ where: { userId } });
+  await prisma.user.delete({ where: { id: userId } });
+
+  revalidateAll();
+  return { ok: true };
+}
+
 // Fija/corrige el pronóstico de un miembro en un partido (uso admin, para
 // resolver reclamos: ej. eligió pero no se guardó). Funciona aunque el
 // partido ya esté cerrado, y recalcula puntos/pozo.
