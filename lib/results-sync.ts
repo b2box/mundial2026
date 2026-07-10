@@ -114,6 +114,8 @@ export type NormMatch = {
   finished: boolean;
   date: string; // ISO
   stage: string | null; // instancia de eliminatoria, si aplica
+  // ganador real (incluye definición por penales); null = deducir por goles
+  winner: "HOME" | "AWAY" | "DRAW" | null;
 };
 
 // ---- Fuente 1: football-data.org ----
@@ -136,7 +138,10 @@ async function fromFootballData(): Promise<NormMatch[] | null> {
       stage: string;
       homeTeam: { name?: string };
       awayTeam: { name?: string };
-      score?: { fullTime?: { home?: number | null; away?: number | null } };
+      score?: {
+        winner?: string | null; // HOME_TEAM | AWAY_TEAM | DRAW (incluye penales)
+        fullTime?: { home?: number | null; away?: number | null };
+      };
     }>;
   };
   return (data.matches ?? [])
@@ -149,6 +154,14 @@ async function fromFootballData(): Promise<NormMatch[] | null> {
       finished: m.status === "FINISHED",
       date: m.utcDate,
       stage: stageFromRound(m.stage),
+      winner:
+        m.score?.winner === "HOME_TEAM"
+          ? ("HOME" as const)
+          : m.score?.winner === "AWAY_TEAM"
+            ? ("AWAY" as const)
+            : m.score?.winner === "DRAW"
+              ? ("DRAW" as const)
+              : null,
     }));
 }
 
@@ -220,6 +233,7 @@ async function fromSportsDB(): Promise<NormMatch[] | null> {
           /finished|ft|aet|pen|match finished/i.test(e.strStatus ?? "FT"),
         date: e.strTimestamp || `${e.dateEvent ?? ""}T12:00:00Z`,
         stage: stageFromRound(e.strRound ?? ""),
+        winner: null, // TheSportsDB no informa ganador por penales confiable
       };
     });
 }
@@ -295,11 +309,11 @@ function buildDiag(source: string, ms: NormMatch[]): Diagnostic {
 export async function syncResults(): Promise<void> {
   try {
     const now = Date.now();
-    // partidos definidos sin resultado (cualquier horario: queremos también
-    // corregir horarios mal cargados y cerrar por resultado de la API)
+    // partidos definidos sin resultado (para cerrarlos) + empates ya
+    // cargados (para re-verificar si en realidad se definieron por penales)
     const active = await prisma.match.findMany({
       where: {
-        result: null,
+        OR: [{ result: null }, { result: "DRAW" }],
         homeTeam: { not: "Por confirmar" },
         awayTeam: { not: "Por confirmar" },
       },
@@ -352,14 +366,24 @@ export async function syncResults(): Promise<void> {
       }
 
       // 2) cargar resultado si la API lo da por finalizado (no depende de
-      //    nuestro horario, así un partido terminado queda cerrado igual)
+      //    nuestro horario, así un partido terminado queda cerrado igual).
+      //    Usa el GANADOR real de la API cuando existe: en empates definidos
+      //    por penales, el que ganó los penales cuenta como victoria (3/0).
       if (ev.finished && ev.hs != null && ev.as != null) {
         const homeIsHome = teamsMatch(ev.home, m.homeTeam);
         const ourHome = homeIsHome ? ev.hs : ev.as;
         const ourAway = homeIsHome ? ev.as : ev.hs;
-        data.result = ourHome === ourAway ? "DRAW" : ourHome > ourAway ? "HOME" : "AWAY";
-        data.homeScore = ourHome;
-        data.awayScore = ourAway;
+        let result: string;
+        if (ev.winner && ev.winner !== "DRAW") {
+          result = homeIsHome ? ev.winner : ev.winner === "HOME" ? "AWAY" : "HOME";
+        } else if (ev.winner === "DRAW") {
+          result = "DRAW";
+        } else {
+          result = ourHome === ourAway ? "DRAW" : ourHome > ourAway ? "HOME" : "AWAY";
+        }
+        if (result !== m.result) data.result = result;
+        if (ourHome !== m.homeScore) data.homeScore = ourHome;
+        if (ourAway !== m.awayScore) data.awayScore = ourAway;
       }
 
       if (Object.keys(data).length > 0) {

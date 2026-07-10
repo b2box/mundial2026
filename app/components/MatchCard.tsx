@@ -136,8 +136,11 @@ export function MatchCard({
           )}
         </span>
         {match.result && isWinnerSide && (
-          <span className="pulse-soft text-xs font-bold text-emerald-400">
+          <span className="pulse-soft text-xs font-bold text-emerald-400 whitespace-nowrap">
             GANÓ ⚽
+            {match.homeScore != null &&
+              match.homeScore === match.awayScore &&
+              " (pen)"}
           </span>
         )}
       </button>
@@ -169,8 +172,16 @@ export function MatchCard({
           <TeamButton side="HOME" />
           <div className="flex flex-col items-center justify-center px-1 text-muted">
             {match.result && match.homeScore != null && match.awayScore != null ? (
-              <span className="text-base font-black text-ink mono whitespace-nowrap">
-                {match.homeScore}-{match.awayScore}
+              <span className="text-center">
+                <span className="block text-base font-black text-ink mono whitespace-nowrap">
+                  {match.homeScore}-{match.awayScore}
+                </span>
+                {match.result !== "DRAW" &&
+                  match.homeScore === match.awayScore && (
+                    <span className="block text-[9px] mono uppercase text-amber">
+                      pen
+                    </span>
+                  )}
               </span>
             ) : (
               <span className="text-xs mono">VS</span>

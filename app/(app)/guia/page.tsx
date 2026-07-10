@@ -105,10 +105,13 @@ export default async function GuiaPage() {
           <Faq q="¿Puedo cambiar mi elección?">
             Sí, todas las veces que quieras, hasta que arranque el partido.
           </Faq>
-          <Faq q="¿Qué pasa en los partidos de eliminatorias que terminan empatados?">
-            Vale el resultado de los 90&apos; + alargue. Si terminó empate (y se
-            definió por penales), todos los que jugaron ese partido se llevan
-            +1 caja.
+          <Faq q="¿Y si el partido empata y se define por penales?">
+            <strong className="text-ink">
+              El que gana los penales cuenta como ganador
+            </strong>
+            : 3 cajas para quienes lo eligieron, 0 para el resto — igual que
+            una victoria normal. En la tarjeta lo ves como &quot;1-1 (pen)&quot;
+            con el GANÓ en el equipo que se llevó la tanda.
           </Faq>
           <Faq q="¿Quién carga los resultados?">
             Nadie: se actualizan solos un rato después de cada partido. La
