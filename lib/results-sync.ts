@@ -139,30 +139,46 @@ async function fromFootballData(): Promise<NormMatch[] | null> {
       homeTeam: { name?: string };
       awayTeam: { name?: string };
       score?: {
-        winner?: string | null; // HOME_TEAM | AWAY_TEAM | DRAW (incluye penales)
+        winner?: string | null; // HOME_TEAM | AWAY_TEAM | DRAW
+        duration?: string; // REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT
         fullTime?: { home?: number | null; away?: number | null };
+        penalties?: { home?: number | null; away?: number | null };
       };
     }>;
   };
   return (data.matches ?? [])
     .filter((m) => m.homeTeam?.name && m.awayTeam?.name)
-    .map((m) => ({
-      home: m.homeTeam.name!,
-      away: m.awayTeam.name!,
-      hs: m.score?.fullTime?.home ?? null,
-      as: m.score?.fullTime?.away ?? null,
-      finished: m.status === "FINISHED",
-      date: m.utcDate,
-      stage: stageFromRound(m.stage),
-      winner:
-        m.score?.winner === "HOME_TEAM"
-          ? ("HOME" as const)
-          : m.score?.winner === "AWAY_TEAM"
-            ? ("AWAY" as const)
-            : m.score?.winner === "DRAW"
-              ? ("DRAW" as const)
-              : null,
-    }));
+    .map((m) => {
+      const w = m.score?.winner;
+      let winner: NormMatch["winner"] =
+        w === "HOME_TEAM"
+          ? "HOME"
+          : w === "AWAY_TEAM"
+            ? "AWAY"
+            : w === "DRAW"
+              ? "DRAW"
+              : null;
+      // si hubo tanda de penales, el ganador de la tanda manda
+      const pens = m.score?.penalties;
+      if (
+        (winner === null || winner === "DRAW") &&
+        pens?.home != null &&
+        pens?.away != null &&
+        pens.home !== pens.away
+      ) {
+        winner = pens.home > pens.away ? "HOME" : "AWAY";
+      }
+      return {
+        home: m.homeTeam.name!,
+        away: m.awayTeam.name!,
+        hs: m.score?.fullTime?.home ?? null,
+        as: m.score?.fullTime?.away ?? null,
+        finished: m.status === "FINISHED",
+        date: m.utcDate,
+        stage: stageFromRound(m.stage),
+        winner,
+      };
+    });
 }
 
 // ---- Fuente 2: TheSportsDB ----
@@ -373,17 +389,25 @@ export async function syncResults(): Promise<void> {
         const homeIsHome = teamsMatch(ev.home, m.homeTeam);
         const ourHome = homeIsHome ? ev.hs : ev.as;
         const ourAway = homeIsHome ? ev.as : ev.hs;
-        let result: string;
+        let result: string | null;
         if (ev.winner && ev.winner !== "DRAW") {
           result = homeIsHome ? ev.winner : ev.winner === "HOME" ? "AWAY" : "HOME";
         } else if (ev.winner === "DRAW") {
           result = "DRAW";
+        } else if (ourHome !== ourAway) {
+          result = ourHome > ourAway ? "HOME" : "AWAY";
         } else {
-          result = ourHome === ourAway ? "DRAW" : ourHome > ourAway ? "HOME" : "AWAY";
+          // goles empatados y la fuente NO confirma ganador: en este Mundial
+          // los empates se definen por penales, así que NO cerrar como
+          // empate — queda pendiente hasta que football-data confirme quién
+          // ganó la tanda.
+          result = null;
         }
-        if (result !== m.result) data.result = result;
-        if (ourHome !== m.homeScore) data.homeScore = ourHome;
-        if (ourAway !== m.awayScore) data.awayScore = ourAway;
+        if (result && result !== m.result) {
+          data.result = result;
+          if (ourHome !== m.homeScore) data.homeScore = ourHome;
+          if (ourAway !== m.awayScore) data.awayScore = ourAway;
+        }
       }
 
       if (Object.keys(data).length > 0) {
